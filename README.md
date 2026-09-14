@@ -52,12 +52,14 @@ administrativas.
 6. **Primeiro login staff**:
 
    ```bash
-   python etl/criar_usuario_staff.py --email qualidade@senff.com.br --senha '...'
+   python etl/criar_usuario_staff.py --email maria.morais@senff.com.br --senha '...'
    ```
 
    Ou crie o usuário em Authentication → Users e rode `docs/sql/bootstrap_perfil.sql`.
-7. **Painel**: `streamlit run dashboard/app.py` — abas 4 indicadores, fechamento
-   mensal, auditorias (entrada manual por pilar) e medidas administrativas.
+7. **Painel**: `streamlit run dashboard/app.py` — login
+   `maria.morais@senff.com.br`. Abas: 4 indicadores, **por correspondente**,
+   **evolução mensal**, **alertas e relatórios**, **relacionamento**,
+   fechamento, auditorias e medidas.
 
 ## Testes
 
@@ -74,8 +76,9 @@ indefinidos) e as regras de cruzamento e dedupe do ETL com dados sintéticos.
 - **Nenhuma classificação regulatória é decidida por IA** — o motor é
   determinístico e auditável; a camada OpenAI (Fase 3) apenas redige narrativa.
 - **Registros "indefinidos" nunca entram no índice** sem confirmação manual.
-- **Fora de escopo ainda**: classificação anual automática (Quadro 3), Agentes
-  de Crédito, alertas por e-mail. Auditorias são entrada **manual** (FR-3).
+- **Fora de escopo ainda**: classificação anual automática (Quadro 3) e
+  Agentes de Crédito. Auditorias são entrada **manual** (FR-3). Alertas
+  automatizados e relatórios mensais (download + SMTP) estão no painel.
 
 Fonte de verdade do escopo: `docs/Briefing_Plano_Qualidade_Correspondentes_v1.1.pdf`.
 Decisões e regras validadas com dados reais: `docs/decisoes.md`.

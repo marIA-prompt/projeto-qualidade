@@ -33,7 +33,7 @@ Carga no banco mapeia **somente** as colunas do schema já aplicado: ver
 - `criar_usuario_staff.py` — cria o primeiro usuário no Auth e o perfil `staff`
   (precisa de `SUPABASE_SERVICE_ROLE_KEY`).
 
-    python etl/criar_usuario_staff.py --email qualidade@senff.com.br --senha '...'
+    python etl/criar_usuario_staff.py --email maria.morais@senff.com.br --senha '...'
 
 Este script usa a `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS) porque roda fora
 do contexto de um usuário logado. **Nunca** usar essa chave no dashboard.

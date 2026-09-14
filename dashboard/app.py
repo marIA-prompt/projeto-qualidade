@@ -17,6 +17,7 @@ Rodar:  streamlit run dashboard/app.py
 from __future__ import annotations
 
 import os
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -25,8 +26,22 @@ import streamlit as st
 from dotenv import load_dotenv
 from supabase import create_client
 
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from alertas import avaliar_painel
 from auditorias_ui import formulario_auditoria, resumo_auditorias
 from tema import LOGO_NAVY, aplicar_tema, cabecalho, hero_login, logo_sidebar, render_kpis
+from visoes import (
+    aba_alertas_relatorios,
+    aba_evolucao,
+    aba_por_correspondente,
+    aba_relacionamento,
+    requisitos_bruna,
+)
+
+EMAIL_STAFF_PADRAO = "maria.morais@senff.com.br"
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -101,7 +116,7 @@ def tela_login() -> None:
     with centro:
         hero_login()
         with st.form("login"):
-            email = st.text_input("E-mail")
+            email = st.text_input("E-mail", value=EMAIL_STAFF_PADRAO)
             senha = st.text_input("Senha", type="password")
             if st.form_submit_button("Entrar", type="primary"):
                 if _entrar(email, senha):
@@ -138,41 +153,46 @@ def _moda(series: pd.Series) -> str | None:
     return validos.mode().iloc[0]
 
 
-def _contagens_do_mes(sb, mes: str) -> pd.DataFrame:
-    """Totais, indefinidas e canal mais frequente — derivados das ocorrências.
+def _mes_iso(valor) -> str:
+    return str(valor)[:10]
 
-    O schema de classificacoes_mensais só guarda o numerador Corban e o status;
-    o restante do painel (FR-5) é lido das tabelas de ocorrência.
-    """
+
+def _contagens_agrupadas(sb) -> pd.DataFrame:
+    """Totais por correspondente e mês — base da série histórica."""
     rec = (
         sb.table("reclamacoes")
-        .select("correspondente_id, responsavel, canal_origem")
-        .eq("mes_referencia", mes)
+        .select("correspondente_id, mes_referencia, responsavel, canal_origem")
         .execute()
         .data
         or []
     )
     aj = (
         sb.table("acoes_judiciais")
-        .select("correspondente_id, responsavel")
-        .eq("mes_referencia", mes)
+        .select("correspondente_id, mes_referencia, responsavel")
         .execute()
         .data
         or []
     )
     rec_df = pd.DataFrame(rec)
     aj_df = pd.DataFrame(aj)
+    if rec_df.empty and aj_df.empty:
+        return pd.DataFrame(columns=[
+            "correspondente_id", "mes_referencia", "qtd_reclamacoes",
+            "qtd_acoes_judiciais", "qtd_indefinidas", "canal_mais_frequente",
+        ])
+
+    chaves: set[tuple[str, str]] = set()
+    if not rec_df.empty:
+        rec_df["mes_referencia"] = rec_df["mes_referencia"].map(_mes_iso)
+        chaves.update(zip(rec_df["correspondente_id"], rec_df["mes_referencia"]))
+    if not aj_df.empty:
+        aj_df["mes_referencia"] = aj_df["mes_referencia"].map(_mes_iso)
+        chaves.update(zip(aj_df["correspondente_id"], aj_df["mes_referencia"]))
 
     linhas = []
-    ids = set()
-    if not rec_df.empty:
-        ids.update(rec_df["correspondente_id"].tolist())
-    if not aj_df.empty:
-        ids.update(aj_df["correspondente_id"].tolist())
-
-    for corr_id in ids:
-        r = rec_df[rec_df["correspondente_id"] == corr_id] if not rec_df.empty else rec_df
-        a = aj_df[aj_df["correspondente_id"] == corr_id] if not aj_df.empty else aj_df
+    for corr_id, mes in chaves:
+        r = rec_df[(rec_df["correspondente_id"] == corr_id) & (rec_df["mes_referencia"] == mes)] if not rec_df.empty else rec_df
+        a = aj_df[(aj_df["correspondente_id"] == corr_id) & (aj_df["mes_referencia"] == mes)] if not aj_df.empty else aj_df
         indefinidas = 0
         if not r.empty:
             indefinidas += int((r["responsavel"] == "indefinido").sum())
@@ -180,6 +200,7 @@ def _contagens_do_mes(sb, mes: str) -> pd.DataFrame:
             indefinidas += int((a["responsavel"] == "indefinido").sum())
         linhas.append({
             "correspondente_id": corr_id,
+            "mes_referencia": mes,
             "qtd_reclamacoes": 0 if r.empty else len(r),
             "qtd_acoes_judiciais": 0 if a.empty else len(a),
             "qtd_indefinidas": indefinidas,
@@ -188,11 +209,18 @@ def _contagens_do_mes(sb, mes: str) -> pd.DataFrame:
     return pd.DataFrame(linhas)
 
 
-def classificacoes_do_mes(sb, mes: str) -> pd.DataFrame:
+def _contagens_do_mes(sb, mes: str) -> pd.DataFrame:
+    extra = _contagens_agrupadas(sb)
+    if extra.empty:
+        return extra
+    alvo = _mes_iso(mes)
+    return extra[extra["mes_referencia"] == alvo].drop(columns=["mes_referencia"])
+
+
+def classificacoes_historico(sb) -> pd.DataFrame:
     dados = (
         sb.table("classificacoes_mensais")
         .select("*, correspondentes(nome, cnpj)")
-        .eq("mes_referencia", mes)
         .execute()
         .data
     )
@@ -203,20 +231,31 @@ def classificacoes_do_mes(sb, mes: str) -> pd.DataFrame:
         "correspondentes.nome": "correspondente",
         "correspondentes.cnpj": "cnpj",
     })
-    extra = _contagens_do_mes(sb, mes)
+    df["mes_referencia"] = df["mes_referencia"].map(_mes_iso)
+    extra = _contagens_agrupadas(sb)
     if extra.empty:
         df["qtd_reclamacoes"] = 0
         df["qtd_acoes_judiciais"] = 0
         df["qtd_indefinidas"] = 0
         df["canal_mais_frequente"] = None
     else:
-        df = df.merge(extra, on="correspondente_id", how="left")
+        df = df.merge(extra, on=["correspondente_id", "mes_referencia"], how="left")
         df["qtd_reclamacoes"] = df["qtd_reclamacoes"].fillna(0).astype(int)
         df["qtd_acoes_judiciais"] = df["qtd_acoes_judiciais"].fillna(0).astype(int)
         df["qtd_indefinidas"] = df["qtd_indefinidas"].fillna(0).astype(int)
     df["numerador"] = (
         df["qtd_reclamacoes_corban"].fillna(0) + df["qtd_acoes_judiciais_corban"].fillna(0)
     )
+    return df
+
+
+def classificacoes_do_mes(hist: pd.DataFrame, mes: str) -> pd.DataFrame:
+    if hist.empty or not mes:
+        return pd.DataFrame()
+    alvo = _mes_iso(mes)
+    df = hist[hist["mes_referencia"] == alvo]
+    if df.empty:
+        return df
     return df.sort_values("numerador", ascending=False)
 
 
@@ -463,17 +502,33 @@ def painel() -> None:
         "Autorregulação do Crédito Consignado — 4 indicadores obrigatórios "
         "(Reclamações, Ações Judiciais, Auditorias Externas e Internas)."
     )
+    requisitos_bruna()
 
-    meses = meses_disponiveis(sb)
+    hist = classificacoes_historico(sb)
+    meses = sorted(hist["mes_referencia"].unique(), reverse=True) if not hist.empty else []
     mes = st.selectbox("Mês de referência", meses) if meses else None
-    df = classificacoes_do_mes(sb, mes) if mes else pd.DataFrame()
+    df = classificacoes_do_mes(hist, mes) if mes else pd.DataFrame()
     resumo = resumo_auditorias(sb)
+    alertas = avaliar_painel(df, resumo, mes or "")
 
     if not df.empty:
         render_kpis(_kpis_do_mes(df, resumo))
 
-    tab_quatro, tab_mensal, tab_aud, tab_med = st.tabs([
+    (
+        tab_quatro,
+        tab_corr,
+        tab_evo,
+        tab_alertas,
+        tab_rel,
+        tab_mensal,
+        tab_aud,
+        tab_med,
+    ) = st.tabs([
         "4 indicadores",
+        "Por correspondente",
+        "Evolução",
+        "Alertas e relatórios",
+        "Relacionamento",
         "Fechamento mensal",
         "Auditorias",
         "Medidas administrativas",
@@ -492,6 +547,18 @@ def painel() -> None:
                 unsafe_allow_html=True,
             )
             tabela_quatro_indicadores(df, resumo)
+
+    with tab_corr:
+        aba_por_correspondente(df, hist, resumo, alertas, mes or "")
+
+    with tab_evo:
+        aba_evolucao(hist)
+
+    with tab_alertas:
+        aba_alertas_relatorios(sb, df, alertas, mes or "", eh_staff)
+
+    with tab_rel:
+        aba_relacionamento(df, alertas, resumo)
 
     with tab_mensal:
         if df.empty:
