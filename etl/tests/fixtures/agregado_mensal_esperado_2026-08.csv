@@ -1,0 +1,26 @@
+mes_referencia;cnpj_correspondente;nome_correspondente;qtd_reclamacoes_total;qtd_reclamacoes_procedentes_corban;qtd_reclamacoes_procedentes_senff;qtd_reclamacoes_indefinidas;qtd_acoes_judiciais_total;qtd_acoes_judiciais_procedentes_corban;qtd_acoes_judiciais_procedentes_senff;qtd_acoes_judiciais_indefinidas;qtd_encaminhadas_fraudes;tipo_ocorrencia_mais_frequente;numerador_indice_quadro5
+2026-08;36357912000162;CONECT;41;1;2;11;20;6;0;5;19;Oferta indevida de portabilidade;7
+2026-08;47057778000109;POUPACRED;8;0;0;2;2;1;0;0;4;Contesta saque ou cartão;1
+2026-08;11781673000142;AGUIAR (S);1;0;0;0;1;0;0;0;2;Contesta saque ou cartão;0
+2026-08;19855443000192;GCM (S);0;0;0;0;1;0;0;0;0;;0
+2026-08;13554821000111;DIRECT X;7;0;1;4;2;0;0;0;4;Contesta saque ou cartão;0
+2026-08;20426489000175;ELLENCE (S);0;0;0;0;2;0;0;0;2;;0
+2026-08;24341809000145;ARX (S);0;0;0;0;1;0;0;0;1;;0
+2026-08;40912119000155;;1;0;0;1;0;0;0;0;0;;0
+2026-08;15598038000185;SOLIDA;6;0;0;2;3;0;0;1;4;Contesta saque ou cartão;0
+2026-08;41163463000151;UNICA;9;0;0;2;3;0;0;1;6;Contesta saque ou cartão;0
+2026-08;44597012000110;AGILIZZA;2;0;0;2;1;0;0;0;1;;0
+2026-08;45811961000114;BTG (S);1;0;0;0;0;0;0;0;1;Contesta saque ou cartão;0
+2026-08;45687964000198;GRUPO CRED (S);1;0;0;0;1;0;0;0;2;Contesta saque ou cartão;0
+2026-08;46638348000100;MDG (S);9;0;0;1;2;0;0;0;8;Contesta saque ou cartão;0
+2026-08;48019679000197;GOLD;10;0;0;2;20;0;0;3;22;Contesta saque ou cartão;0
+2026-08;49205190000172;CAPITAL 2;12;0;0;1;10;0;0;4;17;Oferta indevida de portabilidade;0
+2026-08;51407519000120;FLAMEX;23;0;1;6;18;0;0;3;27;Contesta saque ou cartão;0
+2026-08;51455943000140;REAL CRED (S);7;0;0;3;0;0;0;0;1;Oferta indevida de portabilidade;0
+2026-08;52663729000141;CREDIBILITA (S);2;0;0;1;0;0;0;0;1;Contesta saque ou cartão;0
+2026-08;53536445000157;;1;0;0;1;0;0;0;0;0;;0
+2026-08;53542404000173;FS PROMOTORA;1;0;0;0;0;0;0;0;0;Contesta saque ou cartão;0
+2026-08;54004546000140;HOMEBNK;4;0;0;2;8;0;0;1;7;Contesta saque ou cartão;0
+2026-08;54349150000134;ACG (S);6;0;0;2;0;0;0;0;2;Contesta saque ou cartão;0
+2026-08;61681885000126;GRUPO ALE;2;0;0;1;12;0;0;3;10;Contesta saque ou cartão;0
+2026-08;81485021000146;CREDISUL;1;0;0;0;1;0;0;1;1;Contesta saque ou cartão;0
