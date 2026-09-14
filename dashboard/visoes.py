@@ -75,16 +75,23 @@ def aba_evolucao(classif_hist: pd.DataFrame) -> None:
     with c1:
         st.markdown("**Reclamações, ações e numerador (rede)**")
         st.line_chart(consolidado[["Reclamacoes", "Acoes_judiciais", "Numerador_Quadro5"]])
+        st.caption("Com um mês só o gráfico de linha é um ponto; as barras abaixo já mostram a rede.")
     with c2:
         st.markdown("**Correspondentes não conformes por mês**")
         st.bar_chart(consolidado[["Nao_conformes"]])
 
     st.markdown("**Comparativo entre correspondentes (mês a mês)**")
-    nomes = sorted(hist["correspondente"].dropna().unique().tolist())
+    nomes = (
+        hist.sort_values("qtd_reclamacoes", ascending=False)["correspondente"]
+        .dropna()
+        .drop_duplicates()
+        .tolist()
+    )
+    padrao = nomes[:5]
     escolhidos = st.multiselect(
         "Correspondentes no gráfico",
         nomes,
-        default=nomes[:5],
+        default=padrao,
         max_selections=8,
     )
     if escolhidos:
@@ -129,7 +136,7 @@ def aba_por_correspondente(
     if df_mes.empty:
         st.info("Nenhum correspondente no mês.")
         return
-    opcoes = df_mes.sort_values("correspondente").to_dict("records")
+    opcoes = df_mes.sort_values("qtd_reclamacoes", ascending=False).to_dict("records")
     escolhido = st.selectbox(
         "Correspondente",
         opcoes,
@@ -145,18 +152,27 @@ def aba_por_correspondente(
         "Índice",
         "—" if pd.isna(escolhido.get("indice")) else f"{float(escolhido['indice']) * 100:.4f}%",
     )
-    k4.metric("Status", str(escolhido["status"]).replace("_", " "))
+    k4.metric("Status", str(escolhido["status"]).replace("_", " ").replace("nao ", "não "))
 
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Indicadores do mês**")
-        st.write({
-            "Proc.-Corban (reclamações)": int(escolhido["qtd_reclamacoes_corban"] or 0),
-            "Proc.-Corban (ações)": int(escolhido["qtd_acoes_judiciais_corban"] or 0),
-            "Indefinidas": int(escolhido["qtd_indefinidas"] or 0),
-            "Canal mais frequente": escolhido.get("canal_mais_frequente") or "—",
-            "Carteira produzida": escolhido.get("carteira_denominador") if pd.notna(escolhido.get("carteira_denominador")) else "não carregada",
-        })
+        canal = escolhido.get("canal_mais_frequente")
+        carteira = escolhido.get("carteira_denominador")
+        st.dataframe(
+            pd.DataFrame([
+                {"Campo": "Proc.-Corban (reclamações)", "Valor": int(escolhido["qtd_reclamacoes_corban"] or 0)},
+                {"Campo": "Proc.-Corban (ações)", "Valor": int(escolhido["qtd_acoes_judiciais_corban"] or 0)},
+                {"Campo": "Indefinidas", "Valor": int(escolhido["qtd_indefinidas"] or 0)},
+                {"Campo": "Canal mais frequente", "Valor": "—" if pd.isna(canal) or not canal else canal},
+                {
+                    "Campo": "Carteira produzida",
+                    "Valor": "não carregada" if pd.isna(carteira) else int(carteira),
+                },
+            ]),
+            use_container_width=True,
+            hide_index=True,
+        )
     with c2:
         st.markdown("**Auditorias (indicadores 3 e 4)**")
         if resumo.empty:
@@ -282,8 +298,9 @@ def aba_relacionamento(df_mes: pd.DataFrame, alertas: list[Alerta], resumo: pd.D
         "linguagem, qualidade do atendimento, respeito ao consumidor e oferta "
         "responsável. A conversa com o correspondente vem antes da medida punitiva."
     )
-    st.markdown("**Subcritérios do pilar**")
-    st.write(list(SUBCRITERIOS["relacionamento_cliente"].values()))
+    st.markdown("**Subcritérios do pilar Relacionamento com Cliente**")
+    for rotulo in SUBCRITERIOS["relacionamento_cliente"].values():
+        st.markdown(f"- {rotulo}")
 
     if df_mes.empty:
         return
