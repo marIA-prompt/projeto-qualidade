@@ -10,5 +10,7 @@ assistido por IA no Cursor.
   confirmação da área antes das próximas fases.
 - `normativos/` — Normativo Correlato da Autorregulação do Crédito Consignado
   (alterado pela Deliberação 02/2026) e seu Anexo I (Quadros e métricas).
+- `sql/bootstrap_perfil.sql` — insert do primeiro usuário staff/correspondente
+  depois de criar a conta no Auth.
 
 Qualquer mudança de regra de negócio deve ser registrada em `decisoes.md`.

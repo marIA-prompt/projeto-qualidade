@@ -7,7 +7,11 @@ Scripts de ingestão e limpeza dos exports do sistema **navigate**.
   `Protocolo`/`Identificador da ocorrência`, atribui responsabilidade
   (Corban/Senff/indefinido), aplica a regra de unitariedade e grava em
   `reclamacoes`, `acoes_judiciais` e `classificacoes_mensais` no Supabase.
-- `test_etl_reclamacoes.py` — testes das regras de transformação com dados
+- `etl_carteira.py` — ingestão **manual** do denominador do Quadro 5
+  (`carteira_produzida`). Planilha modelo: `modelo_carteira_produzida.csv`.
+  Depois de gravar, recalcula `classificacoes_mensais` do mês (não precisa
+  reimportar o navigate).
+- `test_etl_reclamacoes.py` / `test_etl_carteira.py` — testes com dados
   sintéticos (nenhum dado real/PII entra no repositório).
 
 Pontos que sempre confundem (leia antes de mexer):

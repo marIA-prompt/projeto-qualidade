@@ -434,6 +434,85 @@ def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -
         )
 
 
+def e_procedente_corban(responsavel, parecer) -> bool:
+    """Reconstrói 'procedente-Corban' a partir das colunas do schema V1."""
+    if responsavel != "corban" or parecer is None:
+        return False
+    return str(parecer).strip().lower().startswith("procedente")
+
+
+def reclassificar_mes(sb, mes: date) -> int:
+    """Recalcula classificacoes_mensais a partir do que já está no banco.
+
+    Use depois de carregar a carteira produzida, sem reimportar os CSVs do navigate.
+    Inclui correspondentes que só têm carteira (zero ocorrências no mês).
+    """
+    mes_iso = mes.isoformat()
+    rec = (
+        sb.table("reclamacoes")
+        .select("correspondente_id, responsavel, parecer")
+        .eq("mes_referencia", mes_iso)
+        .execute()
+        .data
+        or []
+    )
+    aj = (
+        sb.table("acoes_judiciais")
+        .select("correspondente_id, responsavel, parecer")
+        .eq("mes_referencia", mes_iso)
+        .execute()
+        .data
+        or []
+    )
+    carteiras = (
+        sb.table("carteira_produzida")
+        .select("correspondente_id, operacoes_acumuladas_desde_2023")
+        .eq("mes_referencia", mes_iso)
+        .execute()
+        .data
+        or []
+    )
+    carteira_por_id = {
+        c["correspondente_id"]: c["operacoes_acumuladas_desde_2023"]
+        for c in carteiras
+        if c.get("operacoes_acumuladas_desde_2023") is not None
+    }
+
+    ids = {r["correspondente_id"] for r in rec} | {a["correspondente_id"] for a in aj} | set(carteira_por_id)
+    classificacoes = []
+    for corr_id in ids:
+        rec_c = [r for r in rec if r["correspondente_id"] == corr_id]
+        aj_c = [a for a in aj if a["correspondente_id"] == corr_id]
+        rpc = sum(1 for r in rec_c if e_procedente_corban(r.get("responsavel"), r.get("parecer")))
+        apc = sum(1 for a in aj_c if e_procedente_corban(a.get("responsavel"), a.get("parecer")))
+        indefinidas = sum(1 for r in rec_c if r.get("responsavel") == "indefinido") + sum(
+            1 for a in aj_c if a.get("responsavel") == "indefinido"
+        )
+        resultado = classificar_mensal(
+            reclamacoes_procedentes_corban=rpc,
+            acoes_judiciais_procedentes_corban=apc,
+            total_reclamacoes_mes=len(rec_c),
+            carteira_produzida=carteira_por_id.get(corr_id),
+            pendentes_indefinido=indefinidas,
+        )
+        classificacoes.append({
+            "correspondente_id": corr_id,
+            "mes_referencia": mes_iso,
+            "qtd_reclamacoes_corban": rpc,
+            "qtd_acoes_judiciais_corban": apc,
+            "carteira_denominador": resultado.denominador,
+            "indice": resultado.indice,
+            "aplicavel": resultado.aplicavel,
+            "status": resultado.status,
+        })
+    if classificacoes:
+        sb.table("classificacoes_mensais").upsert(
+            classificacoes, on_conflict="correspondente_id,mes_referencia"
+        ).execute()
+    log.info("Reclassificação do mês %s: %d correspondentes.", mes_iso, len(classificacoes))
+    return len(classificacoes)
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -441,9 +520,14 @@ def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--detalhada", required=True, help="CSV da exportação detalhada")
-    parser.add_argument("--normal", required=True, help="CSV da exportação normal (reclamações)")
+    parser.add_argument("--detalhada", help="CSV da exportação detalhada")
+    parser.add_argument("--normal", help="CSV da exportação normal (reclamações)")
     parser.add_argument("--mes", required=True, help="Mês de referência, formato YYYY-MM")
+    parser.add_argument(
+        "--reclassificar",
+        action="store_true",
+        help="Só recalcula classificacoes_mensais a partir do banco (sem reler os CSVs)",
+    )
     parser.add_argument("--dry-run", action="store_true",
                         help="Não grava no banco; gera CSVs de conferência em --saida")
     parser.add_argument("--saida", default="saida_etl",
@@ -455,6 +539,15 @@ def main() -> None:
         mes = date(ano, mes_num, 1)
     except ValueError:
         raise SystemExit(f"--mes inválido: {args.mes!r}. Use YYYY-MM, ex.: 2026-08")
+
+    if args.reclassificar:
+        sb = _criar_cliente_supabase()
+        n = reclassificar_mes(sb, mes)
+        log.info("Reclassificação concluída (%d correspondentes).", n)
+        return
+
+    if not args.detalhada or not args.normal:
+        raise SystemExit("Informe --detalhada e --normal, ou use --reclassificar.")
 
     detalhada = carregar_detalhada(args.detalhada)
     normal = carregar_normal(args.normal)

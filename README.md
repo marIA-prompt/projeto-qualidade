@@ -40,12 +40,19 @@ administrativas.
    ```
 
    Para conferir sem gravar no banco: acrescente `--dry-run --saida ./saida`.
-5. **Denominador do índice**: carregue a volumetria de carteira produzida
-   (acumulada desde jan/2023) em `carteira_produzida.operacoes_acumuladas_desde_2023`
-   — entrada manual até a fonte oficial ser confirmada. Sem ela, o correspondente
-   fica como `nao_aplicavel` (nunca é assumido zero). Depois rode o ETL de novo.
+5. **Denominador do índice** (planilha manual até a fonte oficial existir):
+
+   ```bash
+   python etl/etl_carteira.py --arquivo carteira_2026-08.csv --mes 2026-08
+   ```
+
+   Modelo: `etl/modelo_carteira_produzida.csv`. Sem o denominador o correspondente
+   fica `nao_aplicavel` (nunca é assumido zero). O script já reclassifica o mês;
+   para só recalcular: `python etl/etl_reclamacoes.py --mes 2026-08 --reclassificar`.
 6. **Painel**: `streamlit run dashboard/app.py` (usa apenas a anon key; o RLS
    garante que correspondente só vê os próprios dados).
+7. **Primeiro login staff**: crie o usuário em Authentication → Users e rode
+   `docs/sql/bootstrap_perfil.sql` com o UUID.
 
 ## Testes
 

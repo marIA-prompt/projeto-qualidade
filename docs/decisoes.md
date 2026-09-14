@@ -63,7 +63,7 @@ encaminhamentos a Fraudes bateram 100%.
 
 1. **Fonte da carteira produzida por correspondente** (denominador do Quadro 5)
    — provavelmente o sistema de originação, não o navigate. Até lá: planilha
-   manual em `carteira_produzida`.
+   manual via `etl/etl_carteira.py` (modelo em `etl/modelo_carteira_produzida.csv`).
 2. **Casos "indefinidos"** (~25%/mês): acumular exports normais de meses
    anteriores para cruzar retroativamente, ou pedir a coluna de atribuição no
    export detalhado do navigate?

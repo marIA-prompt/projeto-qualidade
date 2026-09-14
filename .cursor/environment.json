@@ -1,0 +1,11 @@
+{
+  "name": "plano-qualidade-correspondentes",
+  "install": "pip install -r requirements.txt",
+  "terminals": [
+    {
+      "name": "dashboard",
+      "command": "streamlit run dashboard/app.py --server.headless true --server.address 0.0.0.0 --server.port 8501"
+    }
+  ],
+  "ports": [8501]
+}
