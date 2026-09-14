@@ -1,0 +1,16 @@
+# Segredos
+.env
+
+# Dados reais dos exports (contêm dados pessoais de clientes — LGPD).
+# Nunca versionar: usar apenas localmente para rodar o ETL.
+exportacao_*.csv
+agregado_mensal_*.csv
+saida_etl/
+saida/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
