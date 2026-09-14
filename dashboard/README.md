@@ -2,6 +2,8 @@
 
 Painel visual em **Streamlit** (FR-3, FR-5, FR-6, FR-11).
 
+- `tema.py` — tokens visuais (arquitetura Pulso + paleta Senff: navy, acqua, Readex Pro)
+- `assets/` — marcas oficiais do Banco Senff usadas no cabeçalho
 - `app.py` — login via Supabase Auth; abas:
   - **4 indicadores** — Reclamações, Ações Judiciais, Auditoria Externa e Interna
   - **Fechamento mensal** — Quadro 5 (detalhe do mês)

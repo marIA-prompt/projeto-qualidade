@@ -78,3 +78,9 @@ encaminhamentos a Fraudes bateram 100%.
    validar limiares e o cruzamento com desvio de conduta grave.
 7. **Carteira produzida** — a área adiou a planilha completa; o status mensal
    permanece `nao_aplicavel` até haver denominador.
+8. **Visual do painel** — tokens no padrão Pulso (espaçamento pulse, radius,
+   papéis semânticos); primitivas de cor da identidade Banco Senff
+   (`#112369` navy, `#05AACA` acqua, Readex Pro). O Pulso público da RD Saúde
+   é multi-marca; o tema Senff ocupa o mesmo papel que Raia/Drogasil ocupam
+   lá. Se a área tiver um arquivo Figma interno do Pulso Senff, substituímos
+   as primitivas.
