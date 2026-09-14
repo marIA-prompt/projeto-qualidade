@@ -266,6 +266,21 @@ div[data-testid="stAlert"] {
   margin: 0.25rem 0 1rem;
 }
 
+.pq-requisitos {
+  background: var(--color-fill-informative-default);
+  border: 1px solid var(--senff-light-blue);
+  border-radius: var(--border-radius-mediumcontainer);
+  padding: 0.9rem 1.1rem 0.7rem;
+  margin: 0 0 1.1rem;
+  color: var(--senff-navy);
+  font-size: 0.9rem;
+}
+.pq-requisitos ul {
+  margin: 0.4rem 0 0;
+  padding-left: 1.15rem;
+}
+.pq-requisitos li { margin: 0.15rem 0; }
+
 @media (max-width: 960px) {
   .pq-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

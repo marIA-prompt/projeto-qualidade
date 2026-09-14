@@ -84,14 +84,21 @@ def formulario_auditoria(sb) -> None:
         "Tipo",
         list(TIPOS_AUDITORIA.keys()),
         format_func=lambda k: TIPOS_AUDITORIA[k][1],
+        key="aud_tipo",
     )
-    corr = st.selectbox("Correspondente", correspondentes, format_func=_rotulo_corr)
+    corr = st.selectbox(
+        "Correspondente",
+        correspondentes,
+        format_func=_rotulo_corr,
+        key="aud_correspondente",
+    )
     pilar_chave = st.selectbox(
         "Pilar",
         list(PILARES.keys()),
         format_func=lambda k: PILARES[k],
+        key="aud_pilar",
     )
-    data_av = st.date_input("Data da avaliação", value=date.today())
+    data_av = st.date_input("Data da avaliação", value=date.today(), key="aud_data")
 
     st.markdown("**Subcritérios**")
     subcriterios: dict[str, str] = {}

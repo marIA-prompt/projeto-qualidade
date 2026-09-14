@@ -73,10 +73,13 @@ encaminhamentos a Fraudes bateram 100%.
    export detalhado do navigate?
 3. **Corte "≥ 3 reclamações/mês"**: confirmar se considera o total de
    reclamações recebidas ou apenas procedentes (implementado: total).
-4. **Limiar interno de alerta** mais conservador que o regulatório (ex.: 80%
-   do limite) — relevante para a Fase 3 (alertas automatizados).
+4. **Limiar interno de alerta** — implementado em 80% do teto de 0,03%
+   (`LIMIAR_ALERTA_INTERNO`), junto com volume ≥ 3 reclamações/mês, indefinidas
+   e auditoria pendente. Recalculado a cada abertura do painel (aba Alertas).
+   O e-mail SMTP dispara o relatório mensal quando `SMTP_*` estiver no .env.
 5. **Critério de escolha entre os 6 níveis de medida administrativa** — hoje é
    decisão caso a caso da Gestora de Qualidade; o sistema apenas registra.
+   A aba Relacionamento prioriza conversa / reorientação / notificação.
 6. **Pontuação de pilar (FR-3)** — média simples dos subcritérios avaliados
    (ok=100, parcial=50, nao_ok=0). Não substitui o Quadro 3 anual até a área
    validar limiares e o cruzamento com desvio de conduta grave.
@@ -88,3 +91,7 @@ encaminhamentos a Fraudes bateram 100%.
    é multi-marca; o tema Senff ocupa o mesmo papel que Raia/Drogasil ocupam
    lá. Se a área tiver um arquivo Figma interno do Pulso Senff, substituímos
    as primitivas.
+9. **Login staff do painel** — `maria.morais@senff.com.br`.
+10. **Requisitos Bruna Camargo** no painel: visão por correspondente, alertas
+    automatizados nas métricas, relatório mensal (download + SMTP) e vertente
+    de relacionamento (pilar + fila de acompanhamento).

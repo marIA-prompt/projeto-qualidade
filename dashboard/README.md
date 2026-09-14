@@ -4,11 +4,16 @@ Painel visual em **Streamlit** (FR-3, FR-5, FR-6, FR-11).
 
 - `tema.py` — tokens visuais (arquitetura Pulso + paleta Senff: navy, acqua, Readex Pro)
 - `assets/` — marcas oficiais do Banco Senff usadas no cabeçalho
-- `app.py` — login via Supabase Auth; abas:
+- `app.py` — login via Supabase Auth (`maria.morais@senff.com.br`); abas:
   - **4 indicadores** — Reclamações, Ações Judiciais, Auditoria Externa e Interna
+  - **Por correspondente** — painel visual individual (requisito Bruna Camargo)
+  - **Evolução** — gráficos ao longo dos meses
+  - **Alertas e relatórios** — disparo automático nas métricas + envio mensal
+  - **Relacionamento** — conversa/reorientação antes de sanção
   - **Fechamento mensal** — Quadro 5 (detalhe do mês)
   - **Auditorias** — entrada manual por pilar (FR-3)
   - **Medidas administrativas** — escala de 6 níveis + discricionárias (FR-11)
+- `alertas.py` / `relatorios.py` / `visoes.py` — regras e telas dos requisitos acima
 - `pilares.py` — catálogo de pilares/subcritérios e cálculo da pontuação do pilar
 - `auditorias_ui.py` — formulário e histórico de auditorias
 
