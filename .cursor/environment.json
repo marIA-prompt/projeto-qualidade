@@ -1,0 +1,15 @@
+{
+  "name": "projeto-qualidade",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "api",
+      "command": "npm run dev:server"
+    },
+    {
+      "name": "web",
+      "command": "npm run dev:web"
+    }
+  ],
+  "ports": [3001, 5173]
+}
