@@ -32,6 +32,8 @@ if str(_ROOT) not in sys.path:
 
 from alertas import avaliar_painel
 from auditorias_ui import formulario_auditoria, resumo_auditorias
+from fechamento import carregar_ocorrencias_do_mes, csv_fechamento, montar_export_fechamento
+from indefinidos import render_fila_indefinidos
 from tema import LOGO_NAVY, aplicar_tema, cabecalho, hero_login, logo_sidebar, render_kpis
 from visoes import (
     aba_alertas_relatorios,
@@ -523,6 +525,7 @@ def painel() -> None:
         tab_alertas,
         tab_rel,
         tab_mensal,
+        tab_indef,
         tab_aud,
         tab_med,
     ) = st.tabs([
@@ -532,6 +535,7 @@ def painel() -> None:
         "Alertas e relatórios",
         "Relacionamento",
         "Fechamento mensal",
+        "Fila de indefinidos",
         "Auditorias",
         "Medidas administrativas",
     ])
@@ -573,9 +577,8 @@ def painel() -> None:
             col4.metric("Pendências indefinidas", int(df["qtd_indefinidas"].sum()))
             if int(df["qtd_indefinidas"].sum()) > 0:
                 st.warning(
-                    "Há ocorrências sem atribuição Corban/Senff (encerradas neste mês, "
-                    "mas abertas em meses anteriores). Elas NÃO entram no índice até "
-                    "confirmação manual."
+                    "Há ocorrências sem atribuição Corban/Senff. Elas NÃO entram "
+                    "no índice até confirmação na aba Fila de indefinidos."
                 )
             if df["carteira_denominador"].isna().any():
                 st.info(
@@ -583,8 +586,31 @@ def painel() -> None:
                     "A planilha de volumetria fica para quando a fonte estiver disponível."
                 )
             tabela_indicadores(df)
+            rec_mes, aj_mes = carregar_ocorrencias_do_mes(sb, mes)
+            export_df = montar_export_fechamento(df, rec_mes, aj_mes)
+            st.download_button(
+                "Baixar fechamento (.csv)",
+                data=csv_fechamento(export_df),
+                file_name=f"fechamento_correspondentes_{str(mes)[:7]}.csv",
+                mime="text/csv",
+                key="download_fechamento_csv",
+            )
+            st.caption(
+                "CSV no formato do analista, no que o schema V1 permite. "
+                "Não inclui encaminhamentos a Fraudes nem tipo de reclamação "
+                "(colunas ausentes no banco). Confirme indefinidos na aba ao lado "
+                "antes de enviar o fechamento."
+            )
             st.subheader("Ocorrências por correspondente")
             grafico_ocorrencias(df)
+
+    with tab_indef:
+        render_fila_indefinidos(
+            st,
+            sb,
+            st.session_state.get("sessao", {}).get("user_id"),
+            eh_staff,
+        )
 
     with tab_aud:
         if eh_staff:

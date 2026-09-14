@@ -36,6 +36,7 @@ def requisitos_bruna() -> None:
             <li><b>Alertas automatizados</b> nas métricas (índice, volume, indefinidas, auditoria) — aba “Alertas e relatórios”</li>
             <li><b>Envio de relatórios mensais</b> (download + SMTP da área) — mesma aba</li>
             <li><b>Vertente de relacionamento</b> (conversa e reorientação antes de sanção) — aba “Relacionamento”</li>
+            <li><b>Fila de indefinidos</b> — confirmação Corban/Senff sem inventar procedente</li>
           </ul>
         </div>
         """,
@@ -291,6 +292,9 @@ def aba_alertas_relatorios(
             "o envio automático liga quando SMTP_HOST/USUARIO/SENHA forem preenchidos."
         )
 
+    if eh_staff:
+        _historico_relatorios(sb)
+
 
 def aba_relacionamento(df_mes: pd.DataFrame, alertas: list[Alerta], resumo: pd.DataFrame) -> None:
     st.subheader("Vertente de relacionamento")
@@ -347,6 +351,39 @@ def _df_alertas(alertas: list[Alerta]) -> pd.DataFrame:
         "Tipo": a.tipo,
         "Mensagem": a.mensagem,
     } for a in alertas])
+
+
+def _historico_relatorios(sb) -> None:
+    st.divider()
+    st.subheader("Histórico de envios")
+    try:
+        rows = (
+            sb.table("relatorios_mensais")
+            .select("created_at, mes_referencia, destinatario, assunto, status, erro")
+            .order("created_at", desc=True)
+            .limit(20)
+            .execute()
+            .data
+            or []
+        )
+    except Exception:
+        st.caption("Tabela de histórico ainda não disponível neste projeto.")
+        return
+    if not rows:
+        st.caption("Nenhum relatório registrado ainda.")
+        return
+    st.dataframe(
+        pd.DataFrame([{
+            "Quando": (r.get("created_at") or "")[:19].replace("T", " "),
+            "Mês": str(r.get("mes_referencia") or "")[:7],
+            "Para": r.get("destinatario") or "—",
+            "Assunto": r.get("assunto") or "—",
+            "Status": r.get("status") or "—",
+            "Erro": r.get("erro") or "—",
+        } for r in rows]),
+        use_container_width=True,
+        hide_index=True,
+    )
 
 
 def _registrar_envio(sb, mes, destinatario, assunto, corpo, ok, msg) -> None:

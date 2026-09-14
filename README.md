@@ -58,8 +58,8 @@ administrativas.
    Ou crie o usuário em Authentication → Users e rode `docs/sql/bootstrap_perfil.sql`.
 7. **Painel**: `streamlit run dashboard/app.py` — login
    `maria.morais@senff.com.br`. Abas: 4 indicadores, **por correspondente**,
-   **evolução mensal**, **alertas e relatórios**, **relacionamento**,
-   fechamento, auditorias e medidas.
+   **evolução mensal**,    **alertas e relatórios**, **relacionamento**, fechamento, **fila de indefinidos**,
+   auditorias e medidas.
 
 ## Testes
 

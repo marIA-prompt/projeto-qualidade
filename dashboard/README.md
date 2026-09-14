@@ -8,12 +8,15 @@ Painel visual em **Streamlit** (FR-3, FR-5, FR-6, FR-11).
   - **4 indicadores** — Reclamações, Ações Judiciais, Auditoria Externa e Interna
   - **Por correspondente** — painel visual individual (requisito Bruna Camargo)
   - **Evolução** — gráficos ao longo dos meses
-  - **Alertas e relatórios** — disparo automático nas métricas + envio mensal
+  - **Alertas e relatórios** — disparo automático nas métricas + envio mensal + histórico
   - **Relacionamento** — conversa/reorientação antes de sanção
-  - **Fechamento mensal** — Quadro 5 (detalhe do mês)
+  - **Fechamento mensal** — Quadro 5 (detalhe do mês) + export CSV
+  - **Fila de indefinidos** — confirmação Corban/Senff e reclassificação do mês
   - **Auditorias** — entrada manual por pilar (FR-3)
   - **Medidas administrativas** — escala de 6 níveis + discricionárias (FR-11)
 - `alertas.py` / `relatorios.py` / `visoes.py` — regras e telas dos requisitos acima
+- `indefinidos.py` — fila de confirmação (não inventa procedente)
+- `fechamento.py` — CSV do mês no formato do analista (colunas existentes no V1)
 - `pilares.py` — catálogo de pilares/subcritérios e cálculo da pontuação do pilar
 - `auditorias_ui.py` — formulário e histórico de auditorias
 
