@@ -1,0 +1,16 @@
+# Segredos locais — nunca commitar
+.env
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS / editor
+.DS_Store

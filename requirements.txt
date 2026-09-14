@@ -1,0 +1,16 @@
+# Plano de Qualidade de Correspondentes — V1
+#
+# Stack mínima e deliberadamente simples (ver seção 3 do briefing): pandas
+# para o ETL, supabase-py para I/O com o Postgres/RLS, Streamlit para o
+# painel, pytest para os testes do motor de classificação e do ETL.
+
+pandas>=2.2,<3
+supabase>=2.9,<3
+streamlit>=1.38,<2
+python-dotenv>=1.0,<2
+plotly>=5.24,<6
+pytest>=8.3,<9
+
+# Camada de IA opcional (não bloqueante na V1 — só narrativa do relatório
+# mensal e priorização de pré-auditoria; nunca decide a classificação).
+openai>=1.50,<2
