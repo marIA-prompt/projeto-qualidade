@@ -1,7 +1,7 @@
 # Decisões de negócio e regras validadas
 
 Registro auditável das regras implementadas e de como foram validadas.
-Última atualização: 14/09/2026 (entrega da V1 — Fase 1).
+Última atualização: 14/09/2026 (código alinhado ao schema V1 já aplicado no Supabase).
 
 ## 1. Regras do ETL validadas com o fechamento real de agosto/2026
 
@@ -17,7 +17,7 @@ encaminhamentos a Fraudes bateram 100%.
 | 1 | `Tipo de Ocorrência` (export detalhado) é binário: `1` = ação judicial, `4` = reclamação. Mapeia 1:1 com `Setor Origem`. | 100% de correspondência nos 197 registros cruzados de agosto. |
 | 2 | A atribuição de responsabilidade vem **somente** do `Parecer` do export normal (`... - Corban` / `... - Senff`). O parecer da detalhada só diz procedente/improcedente. | Em agosto, dos "Procedente" da detalhada, 8 eram Corban e 4 eram Senff — usar só a detalhada atribuiria culpa errada. |
 | 3 | Registros da detalhada sem par na normal do mês (`Identificador da ocorrência` ∉ `Protocolo`) ficam `responsavel = 'indefinido'` e **não entram no índice**. | 66 de 263 registros (25,1%) em agosto — casos abertos em meses anteriores e encerrados no mês. |
-| 4 | **Unitariedade** (art. 9º): mesmo contrato em múltiplos canais conta uma vez, deduplicando **dentro do mesmo tipo** de ocorrência. Reclamação e ação judicial do mesmo contrato contam separadas (indicadores distintos). | O fechamento real de agosto conta as duas pontas do caso do contrato 2025020201722 (1 reclamação Procon + 1 ação judicial). A linha duplicada é mantida no banco com a flag `duplicada_unitariedade` para rastreabilidade. |
+| 4 | **Unitariedade** (art. 9º): mesmo contrato em múltiplos canais conta uma vez, deduplicando **dentro do mesmo tipo** de ocorrência. Reclamação e ação judicial do mesmo contrato contam separadas (indicadores distintos). | O fechamento real de agosto conta as duas pontas do caso do contrato 2025020201722 (1 reclamação Procon + 1 ação judicial). A linha duplicada é marcada no CSV de `--dry-run` e **não é gravada** no banco (o schema V1 não tem flag `duplicada_unitariedade`). |
 | 5 | `tipo_ocorrencia_mais_frequente` considera **apenas reclamações** (tipo 4), não ações judiciais. | Única combinação que reproduz as 25 linhas do fechamento real. |
 | 6 | `qtd_encaminhadas_fraudes` conta as ocorrências encerradas no mês (base cruzada e deduplicada) com `Encaminhou ao Fraudes` preenchido — e não o total do export normal. | Única base que reproduz o fechamento real (19 vs 22 no caso CONECT, por exemplo). |
 
@@ -26,10 +26,26 @@ encaminhamentos a Fraudes bateram 100%.
 - **Base motriz do mês é o export detalhado** (encerradas no mês); o export
   normal enriquece com atribuição, contrato, canal e cliente.
 - **Recarga idempotente**: o ETL apaga e regrava as ocorrências do
-  `mes_referencia` processado; a trilha em `log_alteracoes` preserva o histórico.
-- **Duplicadas não são descartadas**: ficam gravadas com
-  `duplicada_unitariedade = true` e fora das agregações (rastreabilidade até o
-  dado bruto — exigência de auditabilidade).
+  `mes_referencia` processado. O schema em produção não tem trigger em
+  `log_alteracoes`; a tabela existe para a Fase 2.
+- **Duplicadas de unitariedade não são gravadas**: o schema V1 não tem a
+  coluna `duplicada_unitariedade`, então inseri-las poluiria as contagens.
+  O CSV de `--dry-run` as mantém marcadas para rastreabilidade.
+- **Mapeamento para o schema já aplicado no Supabase** (não recriar tabelas):
+  - `perfis.id` = `auth.uid()`, `perfis.role` (não `user_id`/`papel`).
+  - `reclamacoes`/`acoes_judiciais`: `protocolo` = Identificador da ocorrência;
+    `parecer` = parecer detalhado (Corban/Senff) quando houver par, senão o
+    binário da detalhada; `origem_export` = `'detalhada'` (base motriz);
+    `acoes_judiciais` não tem `canal_origem`.
+  - `classificacoes_mensais` guarda só o numerador Corban, `carteira_denominador`,
+    `indice`, `aplicavel` e `status`. Totais, indefinidas e canal mais frequente
+    o dashboard deriva das tabelas de ocorrência.
+  - Denominador: `carteira_produzida.operacoes_acumuladas_desde_2023`.
+  - `medidas_aplicadas.data_aplicacao` / `aplicada_por` / `classificacao_mensal_id`
+    (sem `mes_referencia`). Lookup tem 6 níveis + 4 medidas discricionárias.
+- **Canal mais frequente no painel** (não "Tipo Reclamação" do navigate): o
+  schema V1 não tem coluna `tipo_reclamacao`; o mais próximo é `canal_origem`
+  (Setor Origem).
 - **Denominador (carteira produzida)**: fonte oficial ainda não confirmada
   (não vem do navigate). A tabela `carteira_produzida` aceita carga manual;
   sem linha para o correspondente/mês o motor devolve `nao_aplicavel` — nunca

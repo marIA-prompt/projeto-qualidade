@@ -7,7 +7,7 @@ from datetime import date
 
 import pandas as pd
 
-from etl_reclamacoes import agregar_mensal, transformar
+from etl_reclamacoes import agregar_mensal, registro_para_banco, transformar
 
 MES = date(2026, 8, 1)
 
@@ -115,3 +115,43 @@ def test_tipo_mais_frequente_considera_apenas_reclamacoes():
         "Contesta saque ou cartão", "Oferta indevida de portabilidade"
     )
     assert agg.loc["222", "tipo_ocorrencia_mais_frequente"] == "Contesta saque ou cartão"
+
+
+COLUNAS_RECLAMACOES = {
+    "correspondente_id", "protocolo", "canal_origem", "cpf_cliente", "cpf_agente",
+    "data_ocorrencia", "data_encerramento", "parecer", "responsavel",
+    "mes_referencia", "origem_export",
+}
+COLUNAS_ACOES = COLUNAS_RECLAMACOES - {"canal_origem"}
+
+
+def test_registro_reclamacao_usa_somente_colunas_do_schema():
+    df, _ = _cenario_base()
+    linha = df.loc[df["id"] == "occ-1"].iloc[0]
+    registro = registro_para_banco(linha, "corr-uuid", com_canal=True)
+    assert set(registro) == COLUNAS_RECLAMACOES
+    assert registro["origem_export"] == "detalhada"
+    assert registro["protocolo"] == "occ-1"
+    assert registro["parecer"] == "Procedente - Corban"  # preferência pelo detalhado
+    assert registro["responsavel"] == "corban"
+    assert registro["canal_origem"] == "Procon"
+    assert "id" not in registro
+    assert "procedente" not in registro
+    assert "duplicada_unitariedade" not in registro
+
+
+def test_registro_acao_judicial_nao_envia_canal_origem():
+    df, _ = _cenario_base()
+    linha = df.loc[df["id"] == "occ-4"].iloc[0]
+    registro = registro_para_banco(linha, "corr-uuid", com_canal=False)
+    assert set(registro) == COLUNAS_ACOES
+    assert "canal_origem" not in registro
+
+
+def test_registro_sem_par_guarda_parecer_binario_e_indefinido():
+    df, _ = _cenario_base()
+    linha = df.loc[df["id"] == "occ-3"].iloc[0]
+    registro = registro_para_banco(linha, "corr-uuid", com_canal=True)
+    assert registro["responsavel"] == "indefinido"
+    assert registro["parecer"] == "Procedente"
+    assert registro["canal_origem"] is None

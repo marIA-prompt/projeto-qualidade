@@ -306,33 +306,41 @@ def _criar_cliente_supabase():
     return create_client(url, chave)
 
 
-def _registro_para_banco(linha: pd.Series, correspondente_id: str) -> dict:
-    def _d(v):
-        return v.isoformat() if isinstance(v, date) else None
+def _texto(valor):
+    return None if pd.isna(valor) else str(valor)
 
-    return {
-        "id": linha["id"],
+
+def _data_iso(valor):
+    return valor.isoformat() if isinstance(valor, date) else None
+
+
+def registro_para_banco(linha: pd.Series, correspondente_id: str, *, com_canal: bool) -> dict:
+    """Mapeia a ocorrência normalizada para as colunas do schema V1 já aplicado.
+
+    `parecer` guarda o texto mais informativo disponível: o parecer detalhado
+    (Procedente/Improcedente - Corban/Senff) quando o cruzamento encontrou par,
+    senão o parecer binário da exportação detalhada.
+    `protocolo` guarda o Identificador da ocorrência (sempre presente na
+    detalhada) — nos casos cruzados ele coincide com o Protocolo da normal.
+    `origem_export` é sempre 'detalhada' porque a base motriz do mês é o
+    export por data de encerramento.
+    """
+    parecer = linha["parecer_detalhado"] if pd.notna(linha["parecer_detalhado"]) else linha["parecer"]
+    registro = {
         "correspondente_id": correspondente_id,
-        "mes_referencia": linha["mes_referencia"].isoformat(),
-        "protocolo": linha["protocolo"] if pd.notna(linha["protocolo"]) else None,
-        "canal_origem": linha["canal_origem"] if pd.notna(linha["canal_origem"]) else None,
-        "tipo_reclamacao": linha["tipo_reclamacao"] if pd.notna(linha["tipo_reclamacao"]) else None,
-        "parecer": linha["parecer"] if pd.notna(linha["parecer"]) else None,
-        "parecer_detalhado": (
-            linha["parecer_detalhado"] if pd.notna(linha["parecer_detalhado"]) else None
-        ),
-        "procedente": bool(linha["procedente"]),
+        "protocolo": _texto(linha["id"]),
+        "cpf_cliente": _texto(linha["cpf_cliente"]),
+        "cpf_agente": _texto(linha["cpf_agente"]),
+        "data_ocorrencia": _data_iso(linha["data_ocorrencia"]),
+        "data_encerramento": _data_iso(linha["data_encerramento"]),
+        "parecer": _texto(parecer),
         "responsavel": linha["responsavel"],
-        "duplicada_unitariedade": bool(linha["duplicada_unitariedade"]),
-        "encaminhou_fraudes": bool(linha["encaminhou_fraudes"]),
-        "numero_contrato": linha["numero_contrato"] if pd.notna(linha["numero_contrato"]) else None,
-        "cpf_cliente": linha["cpf_cliente"] if pd.notna(linha["cpf_cliente"]) else None,
-        "nome_cliente": linha["nome_cliente"] if pd.notna(linha["nome_cliente"]) else None,
-        "cpf_agente": linha["cpf_agente"] if pd.notna(linha["cpf_agente"]) else None,
-        "data_ocorrencia": _d(linha["data_ocorrencia"]),
-        "data_cadastro": _d(linha["data_cadastro"]),
-        "data_encerramento": _d(linha["data_encerramento"]),
+        "mes_referencia": linha["mes_referencia"].isoformat(),
+        "origem_export": "detalhada",
     }
+    if com_canal:
+        registro["canal_origem"] = _texto(linha["canal_origem"])
+    return registro
 
 
 def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -> None:
@@ -356,14 +364,20 @@ def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -
             cnpj_para_id[cnpj] = criado.data[0]["id"]
 
     # 2. Recarga idempotente do mês: apaga e regrava as ocorrências do mês.
+    #    Duplicadas de unitariedade NÃO são gravadas (o schema V1 não tem flag
+    #    para excluí-las depois); o CSV de --dry-run as mantém marcadas.
     mes_iso = mes.isoformat()
     for tabela in ("reclamacoes", "acoes_judiciais"):
         sb.table(tabela).delete().eq("mes_referencia", mes_iso).execute()
 
+    validas = df[~df["duplicada_unitariedade"]]
     reclamacoes, acoes = [], []
-    for _, linha in df.iterrows():
-        registro = _registro_para_banco(linha, cnpj_para_id[linha["cnpj_correspondente"]])
-        (acoes if linha["tipo_ocorrencia"] == TIPO_ACAO_JUDICIAL else reclamacoes).append(registro)
+    for _, linha in validas.iterrows():
+        corr_id = cnpj_para_id[linha["cnpj_correspondente"]]
+        if linha["tipo_ocorrencia"] == TIPO_ACAO_JUDICIAL:
+            acoes.append(registro_para_banco(linha, corr_id, com_canal=False))
+        else:
+            reclamacoes.append(registro_para_banco(linha, corr_id, com_canal=True))
     if reclamacoes:
         sb.table("reclamacoes").insert(reclamacoes).execute()
     if acoes:
@@ -373,11 +387,15 @@ def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -
     # 3. Classificação mensal (Quadro 5) — denominador vem de carteira_produzida.
     carteiras = (
         sb.table("carteira_produzida")
-        .select("correspondente_id, operacoes_acumuladas")
+        .select("correspondente_id, operacoes_acumuladas_desde_2023")
         .eq("mes_referencia", mes_iso)
         .execute()
     )
-    carteira_por_id = {c["correspondente_id"]: c["operacoes_acumuladas"] for c in carteiras.data}
+    carteira_por_id = {
+        c["correspondente_id"]: c["operacoes_acumuladas_desde_2023"]
+        for c in (carteiras.data or [])
+        if c.get("operacoes_acumuladas_desde_2023") is not None
+    }
 
     classificacoes = []
     for _, a in agregado.iterrows():
@@ -394,29 +412,24 @@ def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -
         classificacoes.append({
             "correspondente_id": corr_id,
             "mes_referencia": mes_iso,
-            "qtd_reclamacoes": int(a["qtd_reclamacoes_total"]),
             "qtd_reclamacoes_corban": int(a["qtd_reclamacoes_procedentes_corban"]),
-            "qtd_acoes_judiciais": int(a["qtd_acoes_judiciais_total"]),
             "qtd_acoes_judiciais_corban": int(a["qtd_acoes_judiciais_procedentes_corban"]),
-            "qtd_indefinidas": resultado.pendentes_indefinido,
-            "tipo_ocorrencia_mais_frequente": a["tipo_ocorrencia_mais_frequente"] or None,
-            "numerador": resultado.numerador,
-            "denominador": resultado.denominador,
+            "carteira_denominador": resultado.denominador,
             "indice": resultado.indice,
             "aplicavel": resultado.aplicavel,
             "status": resultado.status,
-            "motivo": resultado.motivo,
         })
     sb.table("classificacoes_mensais").upsert(
         classificacoes, on_conflict="correspondente_id,mes_referencia"
     ).execute()
     log.info("Classificação mensal gravada para %d correspondentes.", len(classificacoes))
 
-    sem_carteira = [c for c in classificacoes if c["denominador"] is None]
+    sem_carteira = [c for c in classificacoes if c["carteira_denominador"] is None]
     if sem_carteira:
         log.warning(
-            "%d correspondentes sem carteira_produzida carregada para %s "
-            "(status nao_aplicavel). Carregue o denominador e rode o ETL de novo.",
+            "%d correspondentes sem carteira_produzida.operacoes_acumuladas_desde_2023 "
+            "carregada para %s (status nao_aplicavel). Carregue o denominador e "
+            "rode o ETL de novo.",
             len(sem_carteira), mes_iso,
         )
 

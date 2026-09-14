@@ -20,7 +20,11 @@ Pontos que sempre confundem (leia antes de mexer):
 3. ~25% dos registros encerrados no mês foram abertos em meses anteriores e
    ficam `indefinido` — nunca somados ao índice sem confirmação manual.
 4. Unitariedade deduplica por contrato **dentro do mesmo tipo** de ocorrência
-   (reclamação × ação judicial do mesmo contrato contam separadas).
+   (reclamação × ação judicial do mesmo contrato contam separadas). Duplicadas
+   não são gravadas no banco (schema V1 sem flag); aparecem só no `--dry-run`.
+
+Carga no banco mapeia **somente** as colunas do schema já aplicado: ver
+`registro_para_banco()` em `etl_reclamacoes.py` e `docs/decisoes.md` seção 2.
 
 Este script usa a `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS) porque roda fora
 do contexto de um usuário logado. **Nunca** usar essa chave no dashboard.

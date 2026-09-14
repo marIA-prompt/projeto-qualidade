@@ -9,6 +9,8 @@ Toda a lógica de negócio (índice, corte, status) mora no ETL e no
 motor_classificacao — este app apenas exibe o que está gravado no banco e
 registra atos manuais (medida administrativa aplicada, FR-11).
 
+Colunas seguem o schema V1 já aplicado no Supabase (ver supabase_schema_rls.sql).
+
 Rodar:  streamlit run dashboard/app.py
 """
 
@@ -82,8 +84,8 @@ def tela_login() -> None:
 def carregar_perfil(sb) -> dict | None:
     dados = (
         sb.table("perfis")
-        .select("papel, correspondente_id")
-        .eq("user_id", st.session_state["sessao"]["user_id"])
+        .select("role, correspondente_id")
+        .eq("id", st.session_state["sessao"]["user_id"])
         .execute()
         .data
     )
@@ -97,6 +99,63 @@ def carregar_perfil(sb) -> dict | None:
 def meses_disponiveis(sb) -> list[str]:
     dados = sb.table("classificacoes_mensais").select("mes_referencia").execute().data
     return sorted({d["mes_referencia"] for d in dados}, reverse=True)
+
+
+def _moda(series: pd.Series) -> str | None:
+    validos = series.dropna()
+    if validos.empty:
+        return None
+    return validos.mode().iloc[0]
+
+
+def _contagens_do_mes(sb, mes: str) -> pd.DataFrame:
+    """Totais, indefinidas e canal mais frequente — derivados das ocorrências.
+
+    O schema de classificacoes_mensais só guarda o numerador Corban e o status;
+    o restante do painel (FR-5) é lido das tabelas de ocorrência.
+    """
+    rec = (
+        sb.table("reclamacoes")
+        .select("correspondente_id, responsavel, canal_origem")
+        .eq("mes_referencia", mes)
+        .execute()
+        .data
+        or []
+    )
+    aj = (
+        sb.table("acoes_judiciais")
+        .select("correspondente_id, responsavel")
+        .eq("mes_referencia", mes)
+        .execute()
+        .data
+        or []
+    )
+    rec_df = pd.DataFrame(rec)
+    aj_df = pd.DataFrame(aj)
+
+    linhas = []
+    ids = set()
+    if not rec_df.empty:
+        ids.update(rec_df["correspondente_id"].tolist())
+    if not aj_df.empty:
+        ids.update(aj_df["correspondente_id"].tolist())
+
+    for corr_id in ids:
+        r = rec_df[rec_df["correspondente_id"] == corr_id] if not rec_df.empty else rec_df
+        a = aj_df[aj_df["correspondente_id"] == corr_id] if not aj_df.empty else aj_df
+        indefinidas = 0
+        if not r.empty:
+            indefinidas += int((r["responsavel"] == "indefinido").sum())
+        if not a.empty:
+            indefinidas += int((a["responsavel"] == "indefinido").sum())
+        linhas.append({
+            "correspondente_id": corr_id,
+            "qtd_reclamacoes": 0 if r.empty else len(r),
+            "qtd_acoes_judiciais": 0 if a.empty else len(a),
+            "qtd_indefinidas": indefinidas,
+            "canal_mais_frequente": None if r.empty else _moda(r["canal_origem"]),
+        })
+    return pd.DataFrame(linhas)
 
 
 def classificacoes_do_mes(sb, mes: str) -> pd.DataFrame:
@@ -114,6 +173,20 @@ def classificacoes_do_mes(sb, mes: str) -> pd.DataFrame:
         "correspondentes.nome": "correspondente",
         "correspondentes.cnpj": "cnpj",
     })
+    extra = _contagens_do_mes(sb, mes)
+    if extra.empty:
+        df["qtd_reclamacoes"] = 0
+        df["qtd_acoes_judiciais"] = 0
+        df["qtd_indefinidas"] = 0
+        df["canal_mais_frequente"] = None
+    else:
+        df = df.merge(extra, on="correspondente_id", how="left")
+        df["qtd_reclamacoes"] = df["qtd_reclamacoes"].fillna(0).astype(int)
+        df["qtd_acoes_judiciais"] = df["qtd_acoes_judiciais"].fillna(0).astype(int)
+        df["qtd_indefinidas"] = df["qtd_indefinidas"].fillna(0).astype(int)
+    df["numerador"] = (
+        df["qtd_reclamacoes_corban"].fillna(0) + df["qtd_acoes_judiciais_corban"].fillna(0)
+    )
     return df.sort_values("numerador", ascending=False)
 
 
@@ -131,12 +204,12 @@ def tabela_indicadores(df: pd.DataFrame) -> None:
         "Ações proc.-Corban": df["qtd_acoes_judiciais_corban"],
         "Indefinidas (pendentes)": df["qtd_indefinidas"],
         "Numerador (Quadro 5)": df["numerador"],
-        "Carteira produzida": df["denominador"],
+        "Carteira produzida": df["carteira_denominador"],
         "Índice": df["indice"].map(
             lambda v: f"{float(v) * 100:.4f}%" if pd.notna(v) else "—"
         ),
         "Status": df["status"].map(ROTULOS_STATUS),
-        "Ocorrência mais frequente": df["tipo_ocorrencia_mais_frequente"].fillna("—"),
+        "Canal mais frequente": df["canal_mais_frequente"].fillna("—"),
     })
     st.dataframe(exibicao, use_container_width=True, hide_index=True)
 
@@ -152,19 +225,29 @@ def grafico_ocorrencias(df: pd.DataFrame) -> None:
     st.bar_chart(grafico)
 
 
+def _rotulo_medida(m: dict) -> str:
+    descricao = m.get("descricao") or "—"
+    if m.get("nivel"):
+        return f"Nível {m['nivel']} — {descricao}"
+    if m.get("descricao"):
+        return f"{descricao} (discricionária)"
+    return descricao
+
+
 def formulario_medida_aplicada(sb, df_mes: pd.DataFrame, mes: str) -> None:
     """FR-11: registro manual da medida administrativa (ato humano, nunca automático)."""
     st.subheader("Registrar medida administrativa aplicada")
     st.caption(
-        "Escala interna do Banco Senff (6 níveis). A decisão de qual nível "
-        "aplicar é sempre da Gestora de Qualidade — o sistema apenas registra."
+        "Escala interna do Banco Senff (6 níveis + medidas discricionárias). "
+        "A decisão de qual medida aplicar é sempre da Gestora de Qualidade — "
+        "o sistema apenas registra."
     )
-    medidas = sb.table("medidas_administrativas").select("*").order("nivel").execute().data
+    medidas = sb.table("medidas_administrativas").select("*").order("id").execute().data
     correspondentes = (
         sb.table("correspondentes").select("id, nome, cnpj").order("nome").execute().data
     )
     if not medidas or not correspondentes:
-        st.info("Cadastre correspondentes e rode o schema para habilitar este formulário.")
+        st.info("Cadastre correspondentes para habilitar este formulário.")
         return
 
     with st.form("medida_aplicada"):
@@ -174,26 +257,35 @@ def formulario_medida_aplicada(sb, df_mes: pd.DataFrame, mes: str) -> None:
             format_func=lambda c: f"{c['nome']} ({c['cnpj']})",
         )
         medida = st.selectbox(
-            "Medida (nível)",
+            "Medida",
             medidas,
-            format_func=lambda m: f"Nível {m['nivel']} — {m['descricao']}",
+            format_func=_rotulo_medida,
         )
         aplicada_em = st.date_input("Data de aplicação", value=date.today())
         motivo = st.text_area("Motivo / contexto (auditável)")
         if st.form_submit_button("Registrar", type="primary"):
+            classif_id = None
+            if not df_mes.empty and "id" in df_mes.columns:
+                match = df_mes[df_mes["correspondente_id"] == corr["id"]]
+                if not match.empty:
+                    classif_id = match.iloc[0]["id"]
             sb.table("medidas_aplicadas").insert({
                 "correspondente_id": corr["id"],
                 "medida_id": medida["id"],
-                "mes_referencia": mes,
-                "aplicada_em": aplicada_em.isoformat(),
+                "classificacao_mensal_id": classif_id,
+                "data_aplicacao": aplicada_em.isoformat(),
+                "aplicada_por": st.session_state["sessao"]["user_id"],
                 "motivo": motivo or None,
             }).execute()
-            st.success("Medida registrada com sucesso (gravada na trilha de auditoria).")
+            st.success("Medida registrada com sucesso.")
 
     aplicadas = (
         sb.table("medidas_aplicadas")
-        .select("aplicada_em, motivo, correspondentes(nome), medidas_administrativas(nivel, descricao)")
-        .order("aplicada_em", desc=True)
+        .select(
+            "data_aplicacao, motivo, correspondentes(nome), "
+            "medidas_administrativas(nivel, descricao)"
+        )
+        .order("data_aplicacao", desc=True)
         .limit(20)
         .execute()
         .data
@@ -201,10 +293,9 @@ def formulario_medida_aplicada(sb, df_mes: pd.DataFrame, mes: str) -> None:
     if aplicadas:
         st.markdown("**Últimas medidas registradas**")
         historico = pd.DataFrame([{
-            "Data": m["aplicada_em"],
-            "Correspondente": m["correspondentes"]["nome"],
-            "Medida": f"Nível {m['medidas_administrativas']['nivel']} — "
-                      f"{m['medidas_administrativas']['descricao']}",
+            "Data": m["data_aplicacao"],
+            "Correspondente": (m.get("correspondentes") or {}).get("nome") or "—",
+            "Medida": _rotulo_medida(m.get("medidas_administrativas") or {}),
             "Motivo": m["motivo"] or "—",
         } for m in aplicadas])
         st.dataframe(historico, use_container_width=True, hide_index=True)
@@ -220,14 +311,15 @@ def painel() -> None:
     if not perfil:
         st.error(
             "Seu usuário não tem perfil cadastrado. Peça à equipe de Qualidade "
-            "para inserir seu registro na tabela `perfis`."
+            "para inserir seu registro na tabela `perfis` "
+            "(colunas: id = auth.uid(), role = 'staff' ou 'correspondente')."
         )
         if st.button("Sair"):
             st.session_state.clear()
             st.rerun()
         return
 
-    eh_staff = perfil["papel"] == "staff"
+    eh_staff = perfil["role"] == "staff"
 
     with st.sidebar:
         st.markdown(f"**Usuário:** {st.session_state['sessao']['email']}")
@@ -264,10 +356,10 @@ def painel() -> None:
             "Há ocorrências sem atribuição Corban/Senff (encerradas neste mês, mas "
             "abertas em meses anteriores). Elas NÃO entram no índice até confirmação manual."
         )
-    if (df["denominador"].isna()).any():
+    if df["carteira_denominador"].isna().any():
         st.warning(
             "Correspondentes sem carteira produzida carregada ficam como 'não aplicável'. "
-            "Carregue a tabela carteira_produzida e rode o ETL novamente."
+            "Preencha `carteira_produzida.operacoes_acumuladas_desde_2023` e rode o ETL novamente."
         )
 
     tabela_indicadores(df)
