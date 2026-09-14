@@ -93,6 +93,7 @@ def aba_evolucao(classif_hist: pd.DataFrame) -> None:
         nomes,
         default=padrao,
         max_selections=8,
+        key="evolucao_correspondentes",
     )
     if escolhidos:
         rec = (
@@ -141,6 +142,7 @@ def aba_por_correspondente(
         "Correspondente",
         opcoes,
         format_func=lambda r: f"{r['correspondente']} ({r['cnpj']})",
+        key="painel_correspondente",
     )
     cid = escolhido["correspondente_id"]
     meus = [a for a in alertas if a.correspondente_id == str(cid)]
@@ -244,8 +246,8 @@ def aba_alertas_relatorios(
     )
     destino_padrao = "maria.morais@senff.com.br"
     nomes = ["Todos"] + sorted(df_mes["correspondente"].unique().tolist()) if not df_mes.empty else ["Todos"]
-    alvo = st.selectbox("Escopo do relatório", nomes)
-    destinatario = st.text_input("Enviar para", value=destino_padrao)
+    alvo = st.selectbox("Escopo do relatório", nomes, key="relatorio_escopo")
+    destinatario = st.text_input("Enviar para", value=destino_padrao, key="relatorio_destinatario")
 
     recorte = df_mes
     nome_alvo = None

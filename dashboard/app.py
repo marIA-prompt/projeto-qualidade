@@ -422,13 +422,15 @@ def formulario_medida_aplicada(sb, df_mes: pd.DataFrame, mes: str) -> None:
             "Correspondente",
             correspondentes,
             format_func=lambda c: f"{c['nome']} ({c['cnpj']})",
+            key="medida_correspondente",
         )
         medida = st.selectbox(
             "Medida",
             medidas,
             format_func=_rotulo_medida,
+            key="medida_tipo",
         )
-        aplicada_em = st.date_input("Data de aplicação", value=date.today())
+        aplicada_em = st.date_input("Data de aplicação", value=date.today(), key="medida_data")
         motivo = st.text_area("Motivo / contexto (auditável)")
         if st.form_submit_button("Registrar", type="primary"):
             classif_id = None
@@ -506,7 +508,7 @@ def painel() -> None:
 
     hist = classificacoes_historico(sb)
     meses = sorted(hist["mes_referencia"].unique(), reverse=True) if not hist.empty else []
-    mes = st.selectbox("Mês de referência", meses) if meses else None
+    mes = st.selectbox("Mês de referência", meses, key="mes_referencia") if meses else None
     df = classificacoes_do_mes(hist, mes) if mes else pd.DataFrame()
     resumo = resumo_auditorias(sb)
     alertas = avaliar_painel(df, resumo, mes or "")
