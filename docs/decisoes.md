@@ -73,3 +73,8 @@ encaminhamentos a Fraudes bateram 100%.
    do limite) — relevante para a Fase 3 (alertas automatizados).
 5. **Critério de escolha entre os 6 níveis de medida administrativa** — hoje é
    decisão caso a caso da Gestora de Qualidade; o sistema apenas registra.
+6. **Pontuação de pilar (FR-3)** — média simples dos subcritérios avaliados
+   (ok=100, parcial=50, nao_ok=0). Não substitui o Quadro 3 anual até a área
+   validar limiares e o cruzamento com desvio de conduta grave.
+7. **Carteira produzida** — a área adiou a planilha completa; o status mensal
+   permanece `nao_aplicavel` até haver denominador.

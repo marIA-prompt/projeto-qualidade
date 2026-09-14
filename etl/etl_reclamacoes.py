@@ -349,7 +349,8 @@ def carregar_no_banco(sb, df: pd.DataFrame, agregado: pd.DataFrame, mes: date) -
     cnpj_para_id: dict[str, str] = {}
     for _, linha in agregado.iterrows():
         cnpj = linha["cnpj_correspondente"]
-        nome = linha["nome_correspondente"] or cnpj
+        nome_bruto = linha["nome_correspondente"]
+        nome = cnpj if pd.isna(nome_bruto) or not str(nome_bruto).strip() else str(nome_bruto).strip()
         existente = (
             sb.table("correspondentes").select("id, nome").eq("cnpj", cnpj).execute()
         )

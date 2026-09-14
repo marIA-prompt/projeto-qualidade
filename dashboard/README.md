@@ -1,14 +1,16 @@
 # dashboard/
 
-Painel visual em **Streamlit** (FR-5, FR-6, FR-11).
+Painel visual em **Streamlit** (FR-3, FR-5, FR-6, FR-11).
 
-- `app.py` — login via Supabase Auth (anon key + token do usuário, RLS ativo);
-  tabela e gráfico por correspondente com reclamações, ações judiciais,
-  índice/status do mês (Quadro 5) e canal de origem mais frequente; e o
-  formulário de registro manual da medida administrativa aplicada
-  (6 níveis + 4 medidas discricionárias do lookup já seedado).
+- `app.py` — login via Supabase Auth; abas:
+  - **4 indicadores** — Reclamações, Ações Judiciais, Auditoria Externa e Interna
+  - **Fechamento mensal** — Quadro 5 (detalhe do mês)
+  - **Auditorias** — entrada manual por pilar (FR-3)
+  - **Medidas administrativas** — escala de 6 níveis + discricionárias (FR-11)
+- `pilares.py` — catálogo de pilares/subcritérios e cálculo da pontuação do pilar
+- `auditorias_ui.py` — formulário e histórico de auditorias
 
-Papéis (colunas do schema V1: `perfis.id` = `auth.uid()`, `perfis.role`):
+Papéis (`perfis.id` = `auth.uid()`, `perfis.role`):
 
 - `staff` (Qualidade/Compliance): vê todos os correspondentes e registra medidas.
 - `correspondente`: o RLS do Postgres garante que só vê os próprios dados —

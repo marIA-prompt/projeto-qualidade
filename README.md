@@ -49,10 +49,15 @@ administrativas.
    Modelo: `etl/modelo_carteira_produzida.csv`. Sem o denominador o correspondente
    fica `nao_aplicavel` (nunca é assumido zero). O script já reclassifica o mês;
    para só recalcular: `python etl/etl_reclamacoes.py --mes 2026-08 --reclassificar`.
-6. **Painel**: `streamlit run dashboard/app.py` (usa apenas a anon key; o RLS
-   garante que correspondente só vê os próprios dados).
-7. **Primeiro login staff**: crie o usuário em Authentication → Users e rode
-   `docs/sql/bootstrap_perfil.sql` com o UUID.
+6. **Primeiro login staff**:
+
+   ```bash
+   python etl/criar_usuario_staff.py --email qualidade@senff.com.br --senha '...'
+   ```
+
+   Ou crie o usuário em Authentication → Users e rode `docs/sql/bootstrap_perfil.sql`.
+7. **Painel**: `streamlit run dashboard/app.py` — abas 4 indicadores, fechamento
+   mensal, auditorias (entrada manual por pilar) e medidas administrativas.
 
 ## Testes
 
@@ -69,8 +74,8 @@ indefinidos) e as regras de cruzamento e dedupe do ETL com dados sintéticos.
 - **Nenhuma classificação regulatória é decidida por IA** — o motor é
   determinístico e auditável; a camada OpenAI (Fase 3) apenas redige narrativa.
 - **Registros "indefinidos" nunca entram no índice** sem confirmação manual.
-- **Fora de escopo na V1**: auditorias externas/internas automatizadas,
-  classificação anual (Quadro 3), Agentes de Crédito, alertas por e-mail.
+- **Fora de escopo ainda**: classificação anual automática (Quadro 3), Agentes
+  de Crédito, alertas por e-mail. Auditorias são entrada **manual** (FR-3).
 
 Fonte de verdade do escopo: `docs/Briefing_Plano_Qualidade_Correspondentes_v1.1.pdf`.
 Decisões e regras validadas com dados reais: `docs/decisoes.md`.

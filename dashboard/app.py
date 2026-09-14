@@ -25,6 +25,8 @@ import streamlit as st
 from dotenv import load_dotenv
 from supabase import create_client
 
+from auditorias_ui import formulario_auditoria, resumo_auditorias
+
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 st.set_page_config(page_title="Plano de Qualidade de Correspondentes", layout="wide")
@@ -194,6 +196,64 @@ def classificacoes_do_mes(sb, mes: str) -> pd.DataFrame:
 # Componentes
 # ---------------------------------------------------------------------------
 
+def tabela_quatro_indicadores(df_mes: pd.DataFrame, resumo: pd.DataFrame) -> None:
+    """Os 4 indicadores obrigatórios (art. 51) por correspondente."""
+    if resumo.empty:
+        ext = pd.DataFrame(columns=["correspondente_id", "data", "media", "pilares"])
+        inte = ext.copy()
+    else:
+        ext = resumo[resumo["tipo"] == "Auditoria externa"][
+            ["correspondente_id", "data", "media", "pilares"]
+        ].rename(columns={"data": "ext_data", "media": "ext_media", "pilares": "ext_pilares"})
+        inte = resumo[resumo["tipo"] == "Auditoria interna"][
+            ["correspondente_id", "data", "media", "pilares"]
+        ].rename(columns={"data": "int_data", "media": "int_media", "pilares": "int_pilares"})
+
+    base = df_mes.merge(ext, on="correspondente_id", how="left").merge(
+        inte, on="correspondente_id", how="left"
+    )
+    for col in ("ext_data", "ext_media", "ext_pilares", "int_data", "int_media", "int_pilares"):
+        if col not in base.columns:
+            base[col] = None
+
+    def _aud(data, media, pilares):
+        if pd.isna(data) or not data:
+            return "Sem registro"
+        media_txt = f"{float(media):.0f}" if pd.notna(media) else "—"
+        return f"{data} · {int(pilares or 0)}/5 pilares · média {media_txt}"
+
+    exibicao = pd.DataFrame({
+        "Correspondente": base["correspondente"],
+        "CNPJ": base["cnpj"],
+        "1. Reclamações": base.apply(
+            lambda r: f"{int(r['qtd_reclamacoes'])} "
+                      f"({int(r['qtd_reclamacoes_corban'])} proc.-Corban)",
+            axis=1,
+        ),
+        "2. Ações judiciais": base.apply(
+            lambda r: f"{int(r['qtd_acoes_judiciais'])} "
+                      f"({int(r['qtd_acoes_judiciais_corban'])} proc.-Corban)",
+            axis=1,
+        ),
+        "3. Auditoria externa": [
+            _aud(d, m, p) for d, m, p in zip(
+                base["ext_data"], base["ext_media"], base["ext_pilares"]
+            )
+        ],
+        "4. Auditoria interna": [
+            _aud(d, m, p) for d, m, p in zip(
+                base["int_data"], base["int_media"], base["int_pilares"]
+            )
+        ],
+        "Status mensal (Quadro 5)": base["status"].map(ROTULOS_STATUS),
+    })
+    st.dataframe(exibicao, use_container_width=True, hide_index=True)
+    st.caption(
+        "Auditorias: última data de avaliação e média dos pilares gravados nesse dia. "
+        "A classificação anual (Quadro 3) ainda não é calculada automaticamente."
+    )
+
+
 def tabela_indicadores(df: pd.DataFrame) -> None:
     exibicao = pd.DataFrame({
         "Correspondente": df["correspondente"],
@@ -330,45 +390,74 @@ def painel() -> None:
 
     st.title("Plano de Qualidade de Correspondentes")
     st.caption(
-        "Indicadores mensais de Reclamações e Ações Judiciais — Quadro 5, "
-        "art. 9º do Anexo I (Autorregulação do Crédito Consignado)."
+        "Autorregulação do Crédito Consignado — 4 indicadores obrigatórios "
+        "(Reclamações, Ações Judiciais, Auditorias Externas e Internas)."
     )
 
     meses = meses_disponiveis(sb)
-    if not meses:
-        st.info("Nenhum mês processado ainda. Rode o ETL (etl/etl_reclamacoes.py).")
-        return
-    mes = st.selectbox("Mês de referência", meses)
+    mes = st.selectbox("Mês de referência", meses) if meses else None
+    df = classificacoes_do_mes(sb, mes) if mes else pd.DataFrame()
+    resumo = resumo_auditorias(sb)
 
-    df = classificacoes_do_mes(sb, mes)
-    if df.empty:
-        st.info("Sem dados para o mês selecionado.")
-        return
+    tab_quatro, tab_mensal, tab_aud, tab_med = st.tabs([
+        "4 indicadores",
+        "Fechamento mensal",
+        "Auditorias",
+        "Medidas administrativas",
+    ])
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Correspondentes", len(df))
-    col2.metric("Não conformes", int((df["status"] == "nao_conforme").sum()))
-    col3.metric("Não aplicáveis", int((df["status"] == "nao_aplicavel").sum()))
-    col4.metric("Pendências indefinidas", int(df["qtd_indefinidas"].sum()))
+    with tab_quatro:
+        if df.empty:
+            st.info("Nenhum mês processado ainda. Rode o ETL de reclamações.")
+        else:
+            tabela_quatro_indicadores(df, resumo)
 
-    if int(df["qtd_indefinidas"].sum()) > 0:
-        st.warning(
-            "Há ocorrências sem atribuição Corban/Senff (encerradas neste mês, mas "
-            "abertas em meses anteriores). Elas NÃO entram no índice até confirmação manual."
-        )
-    if df["carteira_denominador"].isna().any():
-        st.warning(
-            "Correspondentes sem carteira produzida carregada ficam como 'não aplicável'. "
-            "Preencha `carteira_produzida.operacoes_acumuladas_desde_2023` e rode o ETL novamente."
-        )
+    with tab_mensal:
+        if df.empty:
+            st.info("Nenhum mês processado ainda. Rode o ETL de reclamações.")
+        else:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Correspondentes", len(df))
+            col2.metric("Não conformes", int((df["status"] == "nao_conforme").sum()))
+            col3.metric("Não aplicáveis", int((df["status"] == "nao_aplicavel").sum()))
+            col4.metric("Pendências indefinidas", int(df["qtd_indefinidas"].sum()))
+            if int(df["qtd_indefinidas"].sum()) > 0:
+                st.warning(
+                    "Há ocorrências sem atribuição Corban/Senff (encerradas neste mês, "
+                    "mas abertas em meses anteriores). Elas NÃO entram no índice até "
+                    "confirmação manual."
+                )
+            if df["carteira_denominador"].isna().any():
+                st.info(
+                    "Sem carteira produzida o status mensal fica 'não aplicável'. "
+                    "A planilha de volumetria fica para quando a fonte estiver disponível."
+                )
+            tabela_indicadores(df)
+            st.subheader("Ocorrências por correspondente")
+            grafico_ocorrencias(df)
 
-    tabela_indicadores(df)
-    st.subheader("Ocorrências por correspondente")
-    grafico_ocorrencias(df)
+    with tab_aud:
+        if eh_staff:
+            formulario_auditoria(sb)
+        else:
+            st.caption("Somente a área de Qualidade registra auditorias.")
+            if not resumo.empty:
+                st.dataframe(
+                    resumo[resumo["correspondente_id"] == perfil.get("correspondente_id")][
+                        ["tipo", "data", "pilares", "media"]
+                    ].rename(columns={
+                        "tipo": "Tipo", "data": "Data",
+                        "pilares": "Pilares", "media": "Média",
+                    }),
+                    use_container_width=True,
+                    hide_index=True,
+                )
 
-    if eh_staff:
-        st.divider()
-        formulario_medida_aplicada(sb, df, mes)
+    with tab_med:
+        if eh_staff:
+            formulario_medida_aplicada(sb, df, mes or "")
+        else:
+            st.caption("Somente a área de Qualidade registra medidas administrativas.")
 
 
 if "sessao" not in st.session_state:
