@@ -26,10 +26,16 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from auditorias_ui import formulario_auditoria, resumo_auditorias
+from tema import LOGO_NAVY, aplicar_tema, cabecalho, hero_login, logo_sidebar, render_kpis
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-st.set_page_config(page_title="Plano de Qualidade de Correspondentes", layout="wide")
+st.set_page_config(
+    page_title="Plano de Qualidade · Banco Senff",
+    page_icon=str(LOGO_NAVY) if LOGO_NAVY.exists() else "🏦",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 
 ROTULOS_STATUS = {
     "conforme": "🟢 Conforme",
@@ -61,26 +67,48 @@ def _cliente_do_usuario():
 # Login
 # ---------------------------------------------------------------------------
 
+def _entrar(email: str, senha: str) -> bool:
+    try:
+        resposta = _cliente_base().auth.sign_in_with_password(
+            {"email": email, "password": senha}
+        )
+    except Exception:
+        return False
+    if not resposta.session or not resposta.user:
+        return False
+    st.session_state["sessao"] = {
+        "access_token": resposta.session.access_token,
+        "user_id": resposta.user.id,
+        "email": resposta.user.email,
+    }
+    return True
+
+
+def _autologin_preview() -> None:
+    """Login automático só se DASHBOARD_PREVIEW_AUTOLOGIN=1 no .env local."""
+    if os.environ.get("DASHBOARD_PREVIEW_AUTOLOGIN") != "1":
+        return
+    email = os.environ.get("DASHBOARD_PREVIEW_EMAIL")
+    senha = os.environ.get("DASHBOARD_PREVIEW_PASSWORD")
+    if email and senha and _entrar(email, senha):
+        st.rerun()
+
+
 def tela_login() -> None:
-    st.title("Plano de Qualidade de Correspondentes")
-    st.caption("Banco Senff — Autorregulação do Crédito Consignado (FEBRABAN)")
-    with st.form("login"):
-        email = st.text_input("E-mail")
-        senha = st.text_input("Senha", type="password")
-        if st.form_submit_button("Entrar", type="primary"):
-            try:
-                resposta = _cliente_base().auth.sign_in_with_password(
-                    {"email": email, "password": senha}
-                )
-            except Exception:
-                st.error("E-mail ou senha inválidos.")
-                return
-            st.session_state["sessao"] = {
-                "access_token": resposta.session.access_token,
-                "user_id": resposta.user.id,
-                "email": resposta.user.email,
-            }
-            st.rerun()
+    aplicar_tema(esconder_sidebar=True)
+    _autologin_preview()
+    _c1, centro, _c3 = st.columns([1, 1.15, 1])
+    with centro:
+        hero_login()
+        with st.form("login"):
+            email = st.text_input("E-mail")
+            senha = st.text_input("Senha", type="password")
+            if st.form_submit_button("Entrar", type="primary"):
+                if _entrar(email, senha):
+                    st.rerun()
+                else:
+                    st.error("E-mail ou senha inválidos.")
+        st.caption("Acesso interno · Qualidade e Compliance · Banco Senff")
 
 
 def carregar_perfil(sb) -> dict | None:
@@ -195,6 +223,46 @@ def classificacoes_do_mes(sb, mes: str) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Componentes
 # ---------------------------------------------------------------------------
+
+def _kpis_do_mes(df: pd.DataFrame, resumo: pd.DataFrame) -> list[dict]:
+    rec = int(df["qtd_reclamacoes"].sum())
+    rec_corban = int(df["qtd_reclamacoes_corban"].fillna(0).sum())
+    aj = int(df["qtd_acoes_judiciais"].sum())
+    aj_corban = int(df["qtd_acoes_judiciais_corban"].fillna(0).sum())
+    indefinidas = int(df["qtd_indefinidas"].sum())
+    if resumo.empty:
+        ext = 0
+        inte = 0
+    else:
+        ext = int(resumo.loc[resumo["tipo"] == "Auditoria externa", "data"].notna().sum())
+        inte = int(resumo.loc[resumo["tipo"] == "Auditoria interna", "data"].notna().sum())
+    return [
+        {
+            "label": "1. Reclamações",
+            "value": str(rec),
+            "hint": f"{rec_corban} procedentes-Corban",
+            "tone": "acqua",
+        },
+        {
+            "label": "2. Ações judiciais",
+            "value": str(aj),
+            "hint": f"{aj_corban} procedentes-Corban",
+            "tone": "navy",
+        },
+        {
+            "label": "3–4. Auditorias",
+            "value": f"{ext + inte}",
+            "hint": f"{ext} externas · {inte} internas com registro",
+            "tone": "sky",
+        },
+        {
+            "label": "Pendências",
+            "value": str(indefinidas),
+            "hint": "sem atribuição Corban/Senff",
+            "tone": "warn" if indefinidas else "ok",
+        },
+    ]
+
 
 def tabela_quatro_indicadores(df_mes: pd.DataFrame, resumo: pd.DataFrame) -> None:
     """Os 4 indicadores obrigatórios (art. 51) por correspondente."""
@@ -366,6 +434,7 @@ def formulario_medida_aplicada(sb, df_mes: pd.DataFrame, mes: str) -> None:
 # ---------------------------------------------------------------------------
 
 def painel() -> None:
+    aplicar_tema()
     sb = _cliente_do_usuario()
     perfil = carregar_perfil(sb)
     if not perfil:
@@ -380,16 +449,17 @@ def painel() -> None:
         return
 
     eh_staff = perfil["role"] == "staff"
+    logo_sidebar()
 
     with st.sidebar:
-        st.markdown(f"**Usuário:** {st.session_state['sessao']['email']}")
-        st.markdown(f"**Papel:** {'Qualidade/Compliance' if eh_staff else 'Correspondente'}")
+        st.markdown("**Qualidade de Correspondentes**")
+        st.caption(st.session_state["sessao"]["email"])
+        st.caption("Qualidade/Compliance" if eh_staff else "Correspondente")
         if st.button("Sair"):
             st.session_state.clear()
             st.rerun()
 
-    st.title("Plano de Qualidade de Correspondentes")
-    st.caption(
+    cabecalho(
         "Autorregulação do Crédito Consignado — 4 indicadores obrigatórios "
         "(Reclamações, Ações Judiciais, Auditorias Externas e Internas)."
     )
@@ -398,6 +468,9 @@ def painel() -> None:
     mes = st.selectbox("Mês de referência", meses) if meses else None
     df = classificacoes_do_mes(sb, mes) if mes else pd.DataFrame()
     resumo = resumo_auditorias(sb)
+
+    if not df.empty:
+        render_kpis(_kpis_do_mes(df, resumo))
 
     tab_quatro, tab_mensal, tab_aud, tab_med = st.tabs([
         "4 indicadores",
@@ -410,6 +483,14 @@ def painel() -> None:
         if df.empty:
             st.info("Nenhum mês processado ainda. Rode o ETL de reclamações.")
         else:
+            st.markdown(
+                '<p class="pq-legend">'
+                '<span class="pq-chip pq-chip--ok">Conforme &lt; 0,03%</span>'
+                '<span class="pq-chip pq-chip--danger">Não conforme ≥ 0,03%</span>'
+                '<span class="pq-chip pq-chip--off">Não aplicável — sem carteira</span>'
+                "</p>",
+                unsafe_allow_html=True,
+            )
             tabela_quatro_indicadores(df, resumo)
 
     with tab_mensal:

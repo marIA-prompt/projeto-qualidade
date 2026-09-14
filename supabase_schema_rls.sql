@@ -35,9 +35,17 @@ create table public.perfis (
         check (role = 'staff' or correspondente_id is not null)
 );
 
--- Funções auxiliares usadas nas policies (stable = cacheável na mesma query)
+-- Funções auxiliares usadas nas policies (stable = cacheável na mesma query).
+-- SECURITY DEFINER + search_path evita recursão de RLS: as policies de
+-- `perfis` chamam eh_staff(), que lê `perfis`. Sem definer, o Postgres
+-- estoura "stack depth limit exceeded".
 create or replace function public.eh_staff()
-returns boolean language sql stable as $$
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
     select exists (
         select 1 from public.perfis
         where id = auth.uid() and role = 'staff'
@@ -45,7 +53,12 @@ returns boolean language sql stable as $$
 $$;
 
 create or replace function public.meu_correspondente_id()
-returns uuid language sql stable as $$
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
     select correspondente_id from public.perfis where id = auth.uid();
 $$;
 

@@ -58,6 +58,10 @@ encaminhamentos a Fraudes bateram 100%.
 - **Chaves**: ETL usa `service_role` (bypassa RLS, roda sem usuário logado);
   dashboard usa `anon key` + token do usuário (RLS ativo). LGPD: nome/CPF de
   cliente não são exibidos no painel.
+- **Funções `eh_staff()` / `meu_correspondente_id()`** são `SECURITY DEFINER`
+  com `search_path = public`. Sem isso, a policy de `perfis` chama `eh_staff()`
+  que lê `perfis` de novo e o Postgres estoura `stack depth limit exceeded`.
+  Patch: `docs/sql/eh_staff_security_definer.sql` (já aplicado no projeto).
 
 ## 3. Pontos em aberto (não bloqueiam a V1, mas precisam de resposta da área)
 
@@ -78,3 +82,9 @@ encaminhamentos a Fraudes bateram 100%.
    validar limiares e o cruzamento com desvio de conduta grave.
 7. **Carteira produzida** — a área adiou a planilha completa; o status mensal
    permanece `nao_aplicavel` até haver denominador.
+8. **Visual do painel** — tokens no padrão Pulso (espaçamento pulse, radius,
+   papéis semânticos); primitivas de cor da identidade Banco Senff
+   (`#112369` navy, `#05AACA` acqua, Readex Pro). O Pulso público da RD Saúde
+   é multi-marca; o tema Senff ocupa o mesmo papel que Raia/Drogasil ocupam
+   lá. Se a área tiver um arquivo Figma interno do Pulso Senff, substituímos
+   as primitivas.
