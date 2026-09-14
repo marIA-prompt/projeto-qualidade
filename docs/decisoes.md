@@ -58,6 +58,10 @@ encaminhamentos a Fraudes bateram 100%.
 - **Chaves**: ETL usa `service_role` (bypassa RLS, roda sem usuário logado);
   dashboard usa `anon key` + token do usuário (RLS ativo). LGPD: nome/CPF de
   cliente não são exibidos no painel.
+- **Funções `eh_staff()` / `meu_correspondente_id()`** são `SECURITY DEFINER`
+  com `search_path = public`. Sem isso, a policy de `perfis` chama `eh_staff()`
+  que lê `perfis` de novo e o Postgres estoura `stack depth limit exceeded`.
+  Patch: `docs/sql/eh_staff_security_definer.sql` (já aplicado no projeto).
 
 ## 3. Pontos em aberto (não bloqueiam a V1, mas precisam de resposta da área)
 
