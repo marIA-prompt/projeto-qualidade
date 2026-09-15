@@ -8,7 +8,7 @@ export default async function VisaoGeral({
   searchParams: Promise<{ mes?: string; corban?: string }>;
 }) {
   const { mes, corban } = await searchParams;
-  const { df } = await contextoPainel(mes, corban);
+  const { df, hist, alertas, resumo, mes: mesAtual } = await contextoPainel(mes, corban);
   if (!df.length) {
     return (
       <p>
@@ -51,7 +51,12 @@ export default async function VisaoGeral({
         ]}
       />
       <TabelaQuadro5
+        mes={mesAtual}
+        hist={hist}
+        alertas={alertas}
+        auditorias={resumo}
         linhas={df.map((r) => ({
+          id: r.correspondente_id,
           c: r.correspondente,
           cnpj: r.cnpj,
           rec: `${r.qtd_reclamacoes} (${r.qtd_reclamacoes_corban} Corban · ${r.qtd_reclamacoes_senff} Senff)`,
