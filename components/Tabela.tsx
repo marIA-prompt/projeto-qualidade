@@ -21,9 +21,11 @@ function valorOrdenavel(valor: unknown): unknown {
 export function Tabela({
   colunas,
   linhas,
+  onLinha,
 }: {
   colunas: { chave: string; titulo: string }[];
   linhas: Record<string, unknown>[];
+  onLinha?: (linha: Record<string, unknown>) => void;
 }) {
   const [chave, setChave] = useState<string | null>(null);
   const [direcao, setDirecao] = useState<"asc" | "desc">("asc");
@@ -94,7 +96,24 @@ export function Tabela({
         <tbody>
           {visiveis.length ? (
             visiveis.map((row, i) => (
-              <tr key={i} className="border-t border-[var(--border)]">
+              <tr
+                key={i}
+                className={`border-t border-[var(--border)] ${
+                  onLinha ? "cursor-pointer hover:bg-[#e8f7fb]" : ""
+                }`}
+                tabIndex={onLinha ? 0 : undefined}
+                onClick={onLinha ? () => onLinha(row) : undefined}
+                onKeyDown={
+                  onLinha
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onLinha(row);
+                        }
+                      }
+                    : undefined
+                }
+              >
                 {colunas.map((c) => (
                   <td key={c.chave} className="px-3 py-2 align-top">
                     {row[c.chave] as ReactNode}

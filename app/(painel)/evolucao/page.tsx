@@ -73,8 +73,7 @@ export default async function Page({
                 <GraficoLinha data={serie} series={[{ key: "Índice (%)", color: "#9b1c3a" }]} />
               ) : (
                 <p className="rounded-[var(--radius-box)] border border-[var(--border)] bg-white p-4 text-sm">
-                  Sem denominador de carteira neste correspondente — o índice não é calculado (não
-                  inventamos zero).
+                  Sem denominador de carteira neste correspondente — o índice não é calculado.
                 </p>
               )}
             </>
