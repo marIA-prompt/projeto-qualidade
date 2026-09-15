@@ -16,7 +16,16 @@ export function LoginForm() {
     const fd = new FormData(e.currentTarget);
     const email = String(fd.get("email") || "");
     const password = String(fd.get("password") || "");
-    const sb = createBrowserSupabase();
+    let sb;
+    try {
+      sb = createBrowserSupabase();
+    } catch {
+      setPendente(false);
+      setErro(
+        "NEXT_PUBLIC_SUPABASE_URL / ANON_KEY não estão neste deploy. Configure na Vercel e faça Redeploy.",
+      );
+      return;
+    }
     const { error } = await sb.auth.signInWithPassword({ email, password });
     setPendente(false);
     if (error) {

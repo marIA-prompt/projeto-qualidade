@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import { avaliarCorrespondente, type Alerta } from "./alertas";
 import { mesIso } from "./format";
@@ -29,10 +30,14 @@ export const carregarPerfil = cache(async (): Promise<{
   perfil: Perfil | null;
 }> => {
   const sb = await createClient();
-  const {
-    data: { user },
-  } = await sb.auth.getUser();
-  if (!user) throw new Error("unauthenticated");
+  let user = null;
+  try {
+    const { data } = await sb.auth.getUser();
+    user = data.user;
+  } catch {
+    redirect("/login");
+  }
+  if (!user) redirect("/login");
   const { data } = await sb
     .from("perfis")
     .select("role, correspondente_id")

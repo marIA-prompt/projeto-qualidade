@@ -69,10 +69,11 @@ administrativas.
 
    **Deploy na Vercel** (Root Directory pode ficar `./`; o `vercel.json` força Next.js):
    1. Importar o repositório.
-   2. Branch: `cursor/painel-nextjs-vercel-48af` (ou `main` depois do merge).
+   2. Branch: `main`.
    3. Não precisa mudar Root Directory nem o preset Python — cancele e importe de novo se o projeto antigo ficou preso em Python.
-   4. Environment Variables: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-   5. Deploy. No Supabase Auth, acrescente a URL `*.vercel.app`.
+   4. Environment Variables (Production **e** Preview): `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Nunca coloque a service_role na Vercel. Depois de gravar as variáveis, faça **Redeploy**.
+   5. Deploy. O botão Visit abre `/`; sem sessão o painel redireciona para `/login` (não deve aparecer erro genérico da Vercel).
+   6. No Supabase → Authentication → URL Configuration, acrescente a URL de produção (`https://projeto-qualidade-eight.vercel.app/**`) e `https://*.vercel.app/**`.
 
 ## Testes
 

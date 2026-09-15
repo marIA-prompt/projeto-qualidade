@@ -1,9 +1,14 @@
+import { ConfiguracaoAusente } from "@/components/ConfiguracaoAusente";
 import { Shell } from "@/components/ui";
 import { contextoPainel } from "@/lib/contexto";
+import { supabasePublicEnv } from "@/lib/supabase/env";
 
 export const dynamic = "force-dynamic";
 
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
+  if (!supabasePublicEnv()) {
+    return <ConfiguracaoAusente />;
+  }
   const ctx = await contextoPainel();
   if (!ctx.perfil) {
     return (
