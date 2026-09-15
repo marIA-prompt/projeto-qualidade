@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --senff-navy: #112369;
+  --senff-navy-text: #393b75;
+  --senff-sky: #4b90e2;
+  --senff-acqua: #05aaca;
+  --senff-acqua-hover: #048fb0;
+  --senff-grey: #82929b;
+  --senff-light-grey: #f3f5f7;
+  --border: #e4ebf0;
+  --danger: #9b1c3a;
+  --radius-box: 0.75rem;
+  --radius-form: 0.75rem;
+  --background: #f3f5f7;
+  --foreground: #112369;
+  --font-sans: var(--font-readex);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-readex);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-readex), sans-serif;
+}
+
+.kpi-acqua { border-top: 3px solid var(--senff-acqua); }
+.kpi-navy { border-top: 3px solid var(--senff-navy); }
+.kpi-sky { border-top: 3px solid var(--senff-sky); }
+.kpi-warn { border-top: 3px solid #e0a106; }
+
+.chip {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.chip-ok { background: #e6faf4; color: #0a6b5c; }
+.chip-danger { background: #fdecef; color: #9b1c3a; }
+.chip-off { background: #f3f5f7; color: #82929b; }
+
+.btn-primary {
+  background: var(--senff-acqua);
+  color: #fff;
+  border-radius: var(--radius-form);
+  font-weight: 600;
+  padding: 0.55rem 1.15rem;
+}
+.btn-primary:hover { background: var(--senff-acqua-hover); }
+
+input, select, textarea, button {
+  font-family: inherit;
+}
