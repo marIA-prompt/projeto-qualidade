@@ -12,8 +12,10 @@ export default function LoginPage() {
     <main className="flex min-h-screen items-center justify-center bg-[var(--senff-light-grey)] p-6">
       <div className="w-full max-w-md">
         <div className="mb-5 rounded-[var(--radius-box)] bg-[var(--senff-navy)] p-6 text-center text-white">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-senff-branca.png" alt="Banco Senff" className="mx-auto mb-3 h-12 w-auto" />
+          <div className="mb-3 inline-flex rounded-lg bg-white px-3 py-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo-senff.png" alt="Banco Senff" className="h-12 w-auto" />
+          </div>
           <h1 className="text-xl font-semibold">Plano de Qualidade de Correspondentes</h1>
           <p className="mt-1 text-sm text-white/80">
             Banco Senff · Autorregulação do Crédito Consignado (FEBRABAN)
