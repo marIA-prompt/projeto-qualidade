@@ -15,7 +15,8 @@ administrativas.
 |---|---|
 | `etl/` | Ingestão e limpeza dos exports do navigate (Python/pandas) |
 | `motor_classificacao/` | Regras determinísticas dos Quadros 3 e 5 (funções puras + testes) |
-| `dashboard/` | Painel Streamlit com login via Supabase Auth |
+| `web/` | Painel Next.js (Vercel) — login Supabase + RLS |
+| `dashboard/` | Painel Streamlit (legado local) |
 | `docs/` | Briefing versionado, normativos e decisões de negócio |
 | `supabase_schema_rls.sql` | Schema V1 **já aplicado** no Supabase (fonte de verdade; não reexecutar CREATE TABLE) |
 | `.env.example` | Modelo de variáveis de ambiente |
@@ -56,10 +57,16 @@ administrativas.
    ```
 
    Ou crie o usuário em Authentication → Users e rode `docs/sql/bootstrap_perfil.sql`.
-7. **Painel**: `streamlit run dashboard/app.py` — login
-   `maria.morais@senff.com.br`. Abas: 4 indicadores, **por correspondente**,
-   **evolução mensal**,    **alertas e relatórios**, **relacionamento**, fechamento, **fila de indefinidos**,
-   auditorias e medidas.
+7. **Painel (Vercel / Next.js)**: o Streamlit permanece no repo para uso local,
+   mas o preview/deploy público é o app em `web/`.
+
+   ```bash
+   cd web && npm install && npm run dev
+   ```
+
+   Login `maria.morais@senff.com.br`. Deploy: Vercel → Root Directory `web` →
+   variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   (passo completo em `web/README.md`).
 
 ## Testes
 
