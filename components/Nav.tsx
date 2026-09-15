@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { queryPainel } from "@/lib/filtros";
 
 export const NAV = [
   { href: "/", label: "Visão geral" },
@@ -16,8 +17,8 @@ export const NAV = [
 
 export function Nav({ compact = false }: { compact?: boolean }) {
   const pathname = usePathname();
-  const mes = useSearchParams().get("mes");
-  const q = mes ? `?mes=${mes}` : "";
+  const params = useSearchParams();
+  const q = queryPainel({ mes: params.get("mes"), corban: params.get("corban") });
   if (compact) {
     return (
       <nav className="flex gap-2 overflow-auto text-sm">

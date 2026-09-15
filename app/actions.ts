@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { logConfirmacao, payloadConfirmacao } from "@/lib/indefinidos";
 import { carregarPerfil, reclassificarMes, carregarClassificacoes } from "@/lib/dados";
 import { pontuacaoPilar } from "@/lib/pilares";
+import { chaveAcompanhamentoValida } from "@/lib/filtros";
 import { createClient } from "@/lib/supabase/server";
 import { montarRelatorioMensal } from "@/lib/relatorios";
 import { mesIso } from "@/lib/format";
@@ -156,6 +157,52 @@ export async function registrarRelatorio(formData: FormData) {
       ? null
       : "SMTP ainda não configurado. Baixe o relatório; o envio liga quando SMTP_* estiver no projeto Vercel.",
   };
+}
+
+export async function registrarAcompanhamento(formData: FormData) {
+  const userId = await exigirStaff();
+  const correspondente_id = String(formData.get("correspondente_id") || "");
+  const mes = mesIso(formData.get("mes"));
+  const chave = String(formData.get("chave") || "");
+  if (!correspondente_id || !mes) return { ok: false, erro: "Correspondente ou mês ausente." };
+  if (!chaveAcompanhamentoValida(chave)) return { ok: false, erro: "Chave de acompanhamento inválida." };
+
+  const sb = await createClient();
+  const { data: atual } = await sb
+    .from("acompanhamento_acoes")
+    .select("acao_realizada, data_acao")
+    .eq("correspondente_id", correspondente_id)
+    .eq("mes_referencia", mes)
+    .eq("chave", chave)
+    .maybeSingle();
+
+  let acao_realizada = Boolean(atual?.acao_realizada);
+  let data_acao = (atual?.data_acao as string | null) || null;
+  if (formData.has("acao_realizada")) {
+    acao_realizada = String(formData.get("acao_realizada")) === "true";
+  }
+  if (formData.has("data_acao")) {
+    data_acao = String(formData.get("data_acao") || "") || null;
+  }
+  if (acao_realizada && !data_acao && String(formData.get("preencher_data_se_vazia") || "") === "true") {
+    data_acao = new Date().toISOString().slice(0, 10);
+  }
+
+  const { error } = await sb.from("acompanhamento_acoes").upsert(
+    {
+      correspondente_id,
+      mes_referencia: mes,
+      chave,
+      acao_realizada,
+      data_acao,
+      atualizado_por: userId,
+      atualizado_em: new Date().toISOString(),
+    },
+    { onConflict: "correspondente_id,mes_referencia,chave" },
+  );
+  if (error) return { ok: false, erro: error.message };
+  revalidatePath("/relacionamento");
+  return { ok: true, erro: null };
 }
 
 export async function sair() {

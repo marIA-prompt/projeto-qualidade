@@ -13,11 +13,13 @@ import {
   YAxis,
 } from "recharts";
 
+type Ponto = Record<string, string | number | null>;
+
 export function GraficoLinha({
   data,
   series,
 }: {
-  data: Record<string, string | number>[];
+  data: Ponto[];
   series: { key: string; color: string }[];
 }) {
   return (
@@ -30,7 +32,7 @@ export function GraficoLinha({
           <Tooltip />
           <Legend />
           {series.map((s) => (
-            <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} dot={false} />
+            <Line key={s.key} type="monotone" dataKey={s.key} stroke={s.color} dot />
           ))}
         </LineChart>
       </ResponsiveContainer>
@@ -42,7 +44,7 @@ export function GraficoBarras({
   data,
   series,
 }: {
-  data: Record<string, string | number>[];
+  data: Ponto[];
   series: { key: string; color: string }[];
 }) {
   return (

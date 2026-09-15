@@ -5,10 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; corban?: string }>;
 }) {
-  const { mes } = await searchParams;
-  const ctx = await contextoPainel(mes);
+  const { mes, corban } = await searchParams;
+  const ctx = await contextoPainel(mes, corban);
   const sb = await createClient();
   const { data: historico } = ctx.perfil?.role === "staff"
     ? await sb

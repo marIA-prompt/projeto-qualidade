@@ -6,10 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; corban?: string }>;
 }) {
-  const { mes } = await searchParams;
-  const ctx = await contextoPainel(mes);
+  const { mes, corban } = await searchParams;
+  const ctx = await contextoPainel(mes, corban);
   const sb = await createClient();
   if (ctx.perfil?.role !== "staff") {
     return <p className="text-sm">Somente a área de Qualidade registra medidas administrativas.</p>;

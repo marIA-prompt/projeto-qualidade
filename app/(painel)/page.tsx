@@ -5,12 +5,18 @@ import { contextoPainel } from "@/lib/contexto";
 export default async function VisaoGeral({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; corban?: string }>;
 }) {
-  const { mes } = await searchParams;
-  const { df } = await contextoPainel(mes);
+  const { mes, corban } = await searchParams;
+  const { df } = await contextoPainel(mes, corban);
   if (!df.length) {
-    return <p>Nenhum mês processado ainda. Rode o ETL de reclamações.</p>;
+    return (
+      <p>
+        {corban
+          ? "Nenhum dado deste correspondente neste mês."
+          : "Nenhum mês processado ainda. Rode o ETL de reclamações."}
+      </p>
+    );
   }
   const rec = df.reduce((s, r) => s + r.qtd_reclamacoes, 0);
   const recC = df.reduce((s, r) => s + r.qtd_reclamacoes_corban, 0);
