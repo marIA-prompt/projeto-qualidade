@@ -4,13 +4,12 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
 export const NAV = [
-  { href: "/", label: "4 indicadores" },
+  { href: "/", label: "Visão geral" },
   { href: "/correspondente", label: "Por correspondente" },
   { href: "/evolucao", label: "Evolução" },
-  { href: "/alertas", label: "Alertas e relatórios" },
+  { href: "/relatoria", label: "Relatoria" },
   { href: "/relacionamento", label: "Relacionamento" },
   { href: "/fechamento", label: "Fechamento mensal" },
-  { href: "/indefinidos", label: "Fila de indefinidos" },
   { href: "/auditorias", label: "Auditorias" },
   { href: "/medidas", label: "Medidas administrativas" },
 ];

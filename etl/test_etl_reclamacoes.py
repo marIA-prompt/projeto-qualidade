@@ -155,3 +155,12 @@ def test_registro_sem_par_guarda_parecer_binario_e_indefinido():
     assert registro["responsavel"] == "indefinido"
     assert registro["parecer"] == "Procedente"
     assert registro["canal_origem"] is None
+    assert bool(linha["procedente"]) is False  # sem classificação final não entra no índice
+
+
+def test_procedente_usa_classificacao_final_do_export_normal():
+    df, _ = _cenario_base()
+    por_id = df.set_index("id")
+    assert bool(por_id.loc["occ-1", "procedente"]) is True
+    assert bool(por_id.loc["occ-2", "procedente"]) is True
+    assert bool(por_id.loc["occ-3", "procedente"]) is False

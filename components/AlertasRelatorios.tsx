@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { registrarRelatorio } from "@/app/actions";
 import { Tabela } from "@/components/ui";
+import { CRITERIOS_SEVERIDADE } from "@/lib/alertas";
 import { ROTULOS_SEV } from "@/lib/format";
 import { montarRelatorioMensal } from "@/lib/relatorios";
 import type { Alerta } from "@/lib/alertas";
@@ -26,14 +27,9 @@ export function AlertasRelatorios({
   const [dest, setDest] = useState("maria.morais@senff.com.br");
   const [msg, setMsg] = useState<string | null>(null);
   const recorte = alvo === "Todos" ? df : df.filter((r) => r.correspondente === alvo);
-  const recorteAlertas =
-    alvo === "Todos"
-      ? alertas
-      : alertas.filter((a) => recorte.some((r) => r.correspondente_id === a.correspondente_id));
   const { assunto, corpo } = montarRelatorioMensal({
     mes,
     linhas: recorte,
-    alertas: recorteAlertas,
     correspondente: alvo === "Todos" ? null : alvo,
   });
   const nC = alertas.filter((a) => a.severidade === "critico").length;
@@ -42,10 +38,27 @@ export function AlertasRelatorios({
 
   return (
     <section className="space-y-4">
-      <h2 className="text-xl font-semibold">Alertas automatizados</h2>
-      <p className="text-sm text-[var(--senff-navy-text)]">
-        Disparo automático: não conforme, 80% do teto de 0,03%, ≥ 3 reclamações/mês, indefinidas ou auditoria pendente.
-      </p>
+      <h2 className="text-xl font-semibold">Relatoria</h2>
+      <div className="rounded-[var(--radius-box)] border border-[var(--border)] bg-white p-4 text-sm">
+        <p className="font-semibold text-[var(--senff-navy)]">Critério de severidade</p>
+        <p className="mt-1 text-[var(--senff-navy-text)]">
+          A coluna Severidade não é uma nota. Cada linha nasce de uma regra do Quadro 5 /
+          FEBRABAN (arts. 9º e 51). Mensagens abaixo são para o analista interno; o relatório
+          mensal não as reproduz.
+        </p>
+        <Tabela
+          colunas={[
+            { chave: "nivel", titulo: "Nível" },
+            { chave: "regra", titulo: "Regra" },
+            { chave: "metrica", titulo: "Métrica" },
+          ]}
+          linhas={CRITERIOS_SEVERIDADE.map((c) => ({
+            nivel: c.nivel,
+            regra: c.regra,
+            metrica: c.metrica,
+          }))}
+        />
+      </div>
       <div className="grid grid-cols-3 gap-3">
         <Stat label="Críticos" value={nC} />
         <Stat label="Atenção" value={nA} />

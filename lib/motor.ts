@@ -109,3 +109,12 @@ export function eProcedenteSenff(responsavel: string | null, parecer: string | n
   if (responsavel !== "senff" || parecer == null) return false;
   return parecer.trim().toLowerCase().startsWith("procedente");
 }
+
+/** Em andamento = sem classificação final (Corban/Senff). Parecer já Procedente/Improcedente está encerrado. */
+export function eEmAndamento(responsavel: string | null, parecer: string | null): boolean {
+  if (responsavel !== "indefinido") return false;
+  if (parecer == null || !parecer.trim()) return true;
+  const p = parecer.trim().toLowerCase();
+  if (p.startsWith("procedente") || p.startsWith("improcedente")) return false;
+  return true;
+}

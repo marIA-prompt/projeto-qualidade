@@ -26,7 +26,7 @@ export default async function Page({
     .eq("mes_referencia", ctx.mes);
   const exportDf = montarLinhasExport(df, rec || [], aj || []);
   const csv = csvFechamento(exportDf);
-  const indef = df.reduce((s, r) => s + r.qtd_indefinidas, 0);
+  const andamento = df.reduce((s, r) => s + r.qtd_indefinidas, 0);
 
   return (
     <section className="space-y-4">
@@ -35,13 +35,12 @@ export default async function Page({
           { label: "Correspondentes", value: String(df.length), tone: "acqua" },
           { label: "Não conformes", value: String(df.filter((r) => r.status === "nao_conforme").length), tone: "navy" },
           { label: "Não aplicáveis", value: String(df.filter((r) => r.status === "nao_aplicavel").length), tone: "sky" },
-          { label: "Pendências indefinidas", value: String(indef), tone: "warn" },
+          { label: "Em andamento", value: String(andamento), tone: "warn" },
         ]}
       />
-      {indef > 0 ? (
+      {andamento > 0 ? (
         <p className="rounded-[var(--radius-box)] bg-[#fff6e8] p-3 text-sm">
-          Há ocorrências sem atribuição Corban/Senff. Elas NÃO entram no índice até confirmação
-          na fila de indefinidos.
+          Há ocorrências sem classificação final Corban/Senff. Elas não entram no índice.
         </p>
       ) : null}
       <Tabela

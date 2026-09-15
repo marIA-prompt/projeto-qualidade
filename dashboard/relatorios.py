@@ -53,9 +53,6 @@ def montar_relatorio_mensal(
         f"**Escopo:** {escopo}",
         f"**Gerado em:** {date.today().isoformat()}",
         f"",
-        f"Este relatório cobre os 4 indicadores obrigatórios (art. 51): "
-        f"Reclamações, Ações Judiciais, Auditorias Externas e Internas.",
-        f"",
         f"## Resumo",
     ]
     if df_mes is None or df_mes.empty:
@@ -67,11 +64,10 @@ def montar_relatorio_mensal(
         f"- Não conformes: **{int((df_mes['status'] == 'nao_conforme').sum())}**",
         f"- Não aplicáveis (sem carteira/corte): **{int((df_mes['status'] == 'nao_aplicavel').sum())}**",
         f"- Reclamações: **{int(df_mes['qtd_reclamacoes'].sum())}** "
-        f"({int(df_mes['qtd_reclamacoes_corban'].fillna(0).sum())} proc.-Corban)",
+        f"({int(df_mes['qtd_reclamacoes_corban'].fillna(0).sum())} procedente Corban)",
         f"- Ações judiciais: **{int(df_mes['qtd_acoes_judiciais'].sum())}** "
-        f"({int(df_mes['qtd_acoes_judiciais_corban'].fillna(0).sum())} proc.-Corban)",
-        f"- Indefinidas (fora do índice): **{int(df_mes['qtd_indefinidas'].sum())}**",
-        f"- Alertas disparados automaticamente: **{len(alertas)}**",
+        f"({int(df_mes['qtd_acoes_judiciais_corban'].fillna(0).sum())} procedente Corban)",
+        f"- Em andamento (fora do índice): **{int(df_mes['qtd_indefinidas'].sum())}**",
         f"",
         f"## Por correspondente",
         f"",
@@ -84,13 +80,6 @@ def montar_relatorio_mensal(
             f"{int(r['qtd_reclamacoes'])} | {int(r['qtd_acoes_judiciais'])} | "
             f"{_fmt_indice(r.get('indice'))} | {r['status']} |"
         )
-
-    linhas.extend(["", "## Alertas automatizados", ""])
-    if not alertas:
-        linhas.append("Nenhum alerta no mês.")
-    else:
-        for a in alertas:
-            linhas.append(f"- **[{a.severidade}]** {a.mensagem}")
 
     linhas.extend([
         "",

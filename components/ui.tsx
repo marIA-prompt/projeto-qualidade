@@ -38,8 +38,7 @@ export function Shell(props: {
             <div>
               <h1 className="text-lg font-semibold">Plano de Qualidade de Correspondentes</h1>
               <p className="text-sm text-white/80">
-                Autorregulação do Crédito Consignado — 4 indicadores obrigatórios
-                (Reclamações, Ações Judiciais, Auditorias Externas e Internas).
+                Autorregulação do Crédito Consignado · Banco Senff
               </p>
             </div>
           </div>

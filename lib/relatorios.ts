@@ -1,11 +1,9 @@
-import type { Alerta } from "./alertas";
 import type { Classificacao } from "./types";
 import { fmtIndice, mesRotulo } from "./format";
 
 export function montarRelatorioMensal(args: {
   mes: string;
   linhas: Classificacao[];
-  alertas: Alerta[];
   correspondente?: string | null;
 }): { assunto: string; corpo: string } {
   const mesFmt = mesRotulo(args.mes);
@@ -18,8 +16,6 @@ export function montarRelatorioMensal(args: {
     `**Escopo:** ${escopo}`,
     `**Gerado em:** ${new Date().toISOString().slice(0, 10)}`,
     "",
-    "Este relatório cobre os 4 indicadores obrigatórios (art. 51): Reclamações, Ações Judiciais, Auditorias Externas e Internas.",
-    "",
     "## Resumo",
   ];
   if (!args.linhas.length) {
@@ -31,10 +27,9 @@ export function montarRelatorioMensal(args: {
     `- Correspondentes: **${df.length}**`,
     `- Não conformes: **${df.filter((r) => r.status === "nao_conforme").length}**`,
     `- Não aplicáveis (sem carteira/corte): **${df.filter((r) => r.status === "nao_aplicavel").length}**`,
-    `- Reclamações: **${df.reduce((s, r) => s + r.qtd_reclamacoes, 0)}** (${df.reduce((s, r) => s + r.qtd_reclamacoes_corban, 0)} proc.-Corban)`,
-    `- Ações judiciais: **${df.reduce((s, r) => s + r.qtd_acoes_judiciais, 0)}** (${df.reduce((s, r) => s + r.qtd_acoes_judiciais_corban, 0)} proc.-Corban)`,
-    `- Indefinidas (fora do índice): **${df.reduce((s, r) => s + r.qtd_indefinidas, 0)}**`,
-    `- Alertas disparados automaticamente: **${args.alertas.length}**`,
+    `- Reclamações: **${df.reduce((s, r) => s + r.qtd_reclamacoes, 0)}** (${df.reduce((s, r) => s + r.qtd_reclamacoes_corban, 0)} procedente Corban · ${df.reduce((s, r) => s + r.qtd_reclamacoes_senff, 0)} procedente Senff)`,
+    `- Ações judiciais: **${df.reduce((s, r) => s + r.qtd_acoes_judiciais, 0)}** (${df.reduce((s, r) => s + r.qtd_acoes_judiciais_corban, 0)} procedente Corban · ${df.reduce((s, r) => s + r.qtd_acoes_judiciais_senff, 0)} procedente Senff)`,
+    `- Em andamento (fora do índice): **${df.reduce((s, r) => s + r.qtd_indefinidas, 0)}**`,
     "",
     "## Por correspondente",
     "",
@@ -46,9 +41,6 @@ export function montarRelatorioMensal(args: {
       `| ${r.correspondente} | ${r.cnpj} | ${r.qtd_reclamacoes} | ${r.qtd_acoes_judiciais} | ${fmtIndice(r.indice)} | ${r.status} |`,
     );
   }
-  linhas.push("", "## Alertas automatizados", "");
-  if (!args.alertas.length) linhas.push("Nenhum alerta no mês.");
-  else for (const a of args.alertas) linhas.push(`- **[${a.severidade}]** ${a.mensagem}`);
   linhas.push(
     "",
     "## Relacionamento",

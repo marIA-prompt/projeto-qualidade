@@ -111,6 +111,15 @@ export function FormAuditoria({
         placeholder="Observações (auditável)"
         className="w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
       />
+      <label className="block text-sm">
+        Relatório da auditoria (PDF)
+        <input
+          type="file"
+          name="anexo"
+          accept="application/pdf,.pdf"
+          className="mt-1 block w-full text-sm"
+        />
+      </label>
       <button className="btn-primary" type="submit">
         Gravar auditoria
       </button>

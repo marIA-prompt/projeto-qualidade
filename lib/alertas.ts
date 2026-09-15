@@ -2,6 +2,39 @@ import { CORTE_RECLAMACOES_MES, LIMITE_INDICE_QUADRO5 } from "./motor";
 
 export const LIMIAR_ALERTA_INTERNO = LIMITE_INDICE_QUADRO5 * 0.8;
 
+export const CRITERIOS_SEVERIDADE = [
+  {
+    nivel: "Crítico",
+    regra: "Não conforme no Quadro 5",
+    metrica: "Índice ≥ 0,03% (teto FEBRABAN art. 9º)",
+  },
+  {
+    nivel: "Atenção",
+    regra: "Índice próximo do teto",
+    metrica: "Índice ≥ 0,024% (80% do teto de 0,03%)",
+  },
+  {
+    nivel: "Atenção",
+    regra: "Volume de reclamações no mês",
+    metrica: "≥ 3 reclamações (corte de aplicabilidade)",
+  },
+  {
+    nivel: "Atenção",
+    regra: "Relacionamento",
+    metrica: "≥ 3 reclamações e canal mais frequente informado",
+  },
+  {
+    nivel: "Informativo",
+    regra: "Em andamento",
+    metrica: "Ocorrência sem classificação final Corban/Senff (não entra no índice)",
+  },
+  {
+    nivel: "Informativo",
+    regra: "Auditoria",
+    metrica: "Sem auditoria externa e/ou interna cadastrada",
+  },
+] as const;
+
 export const SEV_CRITICO = "critico";
 export const SEV_ATENCAO = "atencao";
 export const SEV_INFO = "info";

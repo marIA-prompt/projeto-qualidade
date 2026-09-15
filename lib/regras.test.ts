@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { classificarMensal, eProcedenteCorban, LIMITE_INDICE_QUADRO5 } from "./motor.ts";
+import { classificarMensal, eProcedenteCorban, eEmAndamento, LIMITE_INDICE_QUADRO5 } from "./motor.ts";
 import { sufixoConfirmacao } from "./indefinidos.ts";
 import { pontuacaoPilar } from "./pilares.ts";
 
@@ -41,6 +41,14 @@ test("não inventa procedente na confirmação", () => {
   const p = sufixoConfirmacao("Improcedente", "corban", new Date("2026-09-14T00:00:00Z"));
   assert.ok(p.startsWith("Improcedente"));
   assert.equal(eProcedenteCorban("corban", p), false);
+});
+
+test("em andamento só sem classificação final", () => {
+  assert.equal(eEmAndamento("indefinido", null), true);
+  assert.equal(eEmAndamento("indefinido", "em análise"), true);
+  assert.equal(eEmAndamento("indefinido", "Improcedente"), false);
+  assert.equal(eEmAndamento("indefinido", "Procedente"), false);
+  assert.equal(eEmAndamento("corban", "Improcedente - Corban"), false);
 });
 
 test("média do pilar ignora nao_avaliado", () => {
