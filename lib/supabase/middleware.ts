@@ -2,6 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function updateSession(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+  if (
+    path.startsWith("/_next") ||
+    path === "/favicon.ico" ||
+    /\.(?:svg|png|jpg|jpeg|gif|webp|ico|woff2?)$/i.test(path)
+  ) {
+    return NextResponse.next();
+  }
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return NextResponse.next({ request });
   }
@@ -33,7 +41,6 @@ export async function updateSession(request: NextRequest) {
     user = null;
   }
 
-  const path = request.nextUrl.pathname;
   const publico = path === "/login" || path.startsWith("/auth");
   if (!user && !publico) {
     const url = request.nextUrl.clone();
