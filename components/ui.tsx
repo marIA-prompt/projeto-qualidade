@@ -97,37 +97,4 @@ export function Chip({ status }: { status: string }) {
   return <span className={`chip ${map[status] || "chip-off"}`}>{rotulo[status] || status}</span>;
 }
 
-export function Tabela({
-  colunas,
-  linhas,
-}: {
-  colunas: { chave: string; titulo: string }[];
-  linhas: Record<string, unknown>[];
-}) {
-  return (
-    <div className="overflow-auto rounded-[var(--radius-box)] border border-[var(--border)] bg-white">
-      <table className="min-w-full text-left text-sm">
-        <thead className="bg-[var(--senff-light-grey)] text-[var(--senff-navy-text)]">
-          <tr>
-            {colunas.map((c) => (
-              <th key={c.chave} className="px-3 py-2 font-semibold">
-                {c.titulo}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {linhas.map((row, i) => (
-            <tr key={i} className="border-t border-[var(--border)]">
-              {colunas.map((c) => (
-                <td key={c.chave} className="px-3 py-2 align-top">
-                  {row[c.chave] as React.ReactNode}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+export { Tabela } from "./Tabela";
