@@ -1,7 +1,7 @@
 # Decisões de negócio e regras validadas
 
 Registro auditável das regras implementadas e de como foram validadas.
-Última atualização: 14/09/2026 (código alinhado ao schema V1 já aplicado no Supabase).
+Última atualização: 14/09/2026 (fila de indefinidos + export do fechamento).
 
 ## 1. Regras do ETL validadas com o fechamento real de agosto/2026
 
@@ -68,9 +68,11 @@ encaminhamentos a Fraudes bateram 100%.
 1. **Fonte da carteira produzida por correspondente** (denominador do Quadro 5)
    — provavelmente o sistema de originação, não o navigate. Até lá: planilha
    manual via `etl/etl_carteira.py` (modelo em `etl/modelo_carteira_produzida.csv`).
-2. **Casos "indefinidos"** (~25%/mês): acumular exports normais de meses
-   anteriores para cruzar retroativamente, ou pedir a coluna de atribuição no
-   export detalhado do navigate?
+2. **Casos "indefinidos"** (~25%/mês): a aba **Fila de indefinidos** permite
+   confirmar Corban ou Senff sem alterar o parecer original (não inventa
+   procedente). O mês é reclassificado na hora. Continua em aberto acumular
+   exports normais de meses anteriores ou pedir a coluna de atribuição no
+   export detalhado do navigate.
 3. **Corte "≥ 3 reclamações/mês"**: confirmar se considera o total de
    reclamações recebidas ou apenas procedentes (implementado: total).
 4. **Limiar interno de alerta** — implementado em 80% do teto de 0,03%
