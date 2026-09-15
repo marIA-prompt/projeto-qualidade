@@ -15,7 +15,7 @@ administrativas.
 |---|---|
 | `etl/` | Ingestão e limpeza dos exports do navigate (Python/pandas) |
 | `motor_classificacao/` | Regras determinísticas dos Quadros 3 e 5 (funções puras + testes) |
-| `web/` | Painel Next.js (Vercel) — login Supabase + RLS |
+| `app/` `components/` `lib/` | Painel Next.js (Vercel) — login Supabase + RLS |
 | `dashboard/` | Painel Streamlit (legado local) |
 | `docs/` | Briefing versionado, normativos e decisões de negócio |
 | `supabase_schema_rls.sql` | Schema V1 **já aplicado** no Supabase (fonte de verdade; não reexecutar CREATE TABLE) |
@@ -57,16 +57,22 @@ administrativas.
    ```
 
    Ou crie o usuário em Authentication → Users e rode `docs/sql/bootstrap_perfil.sql`.
-7. **Painel (Vercel / Next.js)**: o Streamlit permanece no repo para uso local,
-   mas o preview/deploy público é o app em `web/`.
+7. **Painel (Vercel / Next.js)**:
 
    ```bash
-   cd web && npm install && npm run dev
+   cp .env.example .env.local
+   # preencha NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY
+   npm install && npm run dev
    ```
 
-   Login `maria.morais@senff.com.br`. Deploy: Vercel → Root Directory `web` →
-   variáveis `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   (passo completo em `web/README.md`).
+   Login `maria.morais@senff.com.br`.
+
+   **Deploy na Vercel** (Root Directory pode ficar `./`; o `vercel.json` força Next.js):
+   1. Importar o repositório.
+   2. Branch: `cursor/painel-nextjs-vercel-48af` (ou `main` depois do merge).
+   3. Não precisa mudar Root Directory nem o preset Python — cancele e importe de novo se o projeto antigo ficou preso em Python.
+   4. Environment Variables: `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+   5. Deploy. No Supabase Auth, acrescente a URL `*.vercel.app`.
 
 ## Testes
 
