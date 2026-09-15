@@ -12,8 +12,10 @@ export function Shell(props: {
   return (
     <div className="min-h-screen bg-[var(--senff-light-grey)] text-[var(--senff-navy)]">
       <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col bg-[var(--senff-navy)] p-5 text-white md:flex">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo-senff-branca.png" alt="Banco Senff" className="mb-6 h-10 w-auto" />
+        <div className="mb-6 inline-flex w-fit rounded-lg bg-white px-3 py-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo-senff.png" alt="Banco Senff" className="h-12 w-auto" />
+        </div>
         <p className="text-sm font-semibold">Qualidade de Correspondentes</p>
         <p className="mt-1 truncate text-xs text-white/75">{props.email}</p>
         <p className="mb-6 text-xs text-white/60">
@@ -29,8 +31,10 @@ export function Shell(props: {
       <div className="md:pl-64">
         <header className="bg-[var(--senff-navy)] px-6 py-4 text-white">
           <div className="flex flex-wrap items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-senff-branca.png" alt="" className="h-11 w-auto md:hidden" />
+            <div className="inline-flex rounded-lg bg-white px-2.5 py-1.5 md:hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-senff.png" alt="Banco Senff" className="h-10 w-auto" />
+            </div>
             <div>
               <h1 className="text-lg font-semibold">Plano de Qualidade de Correspondentes</h1>
               <p className="text-sm text-white/80">
@@ -49,16 +53,6 @@ export function Shell(props: {
           <Suspense>
             <MesSeletor meses={props.meses} />
           </Suspense>
-          <div className="rounded-[var(--radius-box)] border border-[#a9d7eb] bg-[#e8f4fc] p-4 text-sm">
-            <strong>Requisitos Bruna Camargo — cobertos neste painel</strong>
-            <ul className="mt-2 list-disc pl-5">
-              <li>Painel visual por correspondente</li>
-              <li>Alertas automatizados nas métricas</li>
-              <li>Envio / download de relatórios mensais</li>
-              <li>Vertente de relacionamento antes da sanção</li>
-              <li>Fila de indefinidos sem inventar procedente</li>
-            </ul>
-          </div>
           {props.children}
         </main>
       </div>
