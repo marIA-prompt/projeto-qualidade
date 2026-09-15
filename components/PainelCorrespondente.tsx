@@ -67,8 +67,10 @@ export function PainelCorrespondente({
         ]}
         linhas={[
           { c: "Proc.-Corban (reclamações)", v: escolhido.qtd_reclamacoes_corban },
+          { c: "Proc.-Senff (reclamações)", v: escolhido.qtd_reclamacoes_senff },
           { c: "Proc.-Corban (ações)", v: escolhido.qtd_acoes_judiciais_corban },
-          { c: "Indefinidas", v: escolhido.qtd_indefinidas },
+          { c: "Proc.-Senff (ações)", v: escolhido.qtd_acoes_judiciais_senff },
+          { c: "Em andamento", v: escolhido.qtd_indefinidas },
           { c: "Canal mais frequente", v: escolhido.canal_mais_frequente || "—" },
           { c: "Carteira produzida", v: escolhido.carteira_denominador ?? "não carregada" },
         ]}
@@ -109,7 +111,7 @@ export function PainelCorrespondente({
           ))}
         </ul>
       ) : (
-        <p>Nenhum alerta automático neste mês.</p>
+        <p>Nenhum alerta neste mês.</p>
       )}
       <p className="rounded-[var(--radius-box)] bg-[#e8f4fc] p-3 text-sm">{acaoRelacionamento(meus)}</p>
     </section>

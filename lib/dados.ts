@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { avaliarCorrespondente, type Alerta } from "./alertas";
 import { mesIso } from "./format";
-import { classificarMensal, eProcedenteCorban, eProcedenteSenff } from "./motor";
+import { classificarMensal, eEmAndamento, eProcedenteCorban, eProcedenteSenff } from "./motor";
 import { TIPOS_AUDITORIA } from "./pilares";
 import { createClient } from "./supabase/server";
 import type { Classificacao, Indefinido, Perfil, ResumoAuditoria } from "./types";
@@ -57,44 +57,46 @@ export const carregarClassificacoes = cache(async (): Promise<Classificacao[]> =
     .select("*, correspondentes(nome, cnpj)");
   const { data: rec } = await sb
     .from("reclamacoes")
-    .select("correspondente_id, mes_referencia, responsavel, canal_origem");
+    .select("correspondente_id, mes_referencia, responsavel, canal_origem, parecer");
   const { data: aj } = await sb
     .from("acoes_judiciais")
-    .select("correspondente_id, mes_referencia, responsavel");
+    .select("correspondente_id, mes_referencia, responsavel, parecer");
 
   const extra = new Map<
     string,
     {
       qtd_reclamacoes: number;
+      qtd_reclamacoes_senff: number;
       qtd_acoes_judiciais: number;
+      qtd_acoes_judiciais_senff: number;
       qtd_indefinidas: number;
       canais: (string | null)[];
     }
   >();
+  const vazio = () => ({
+    qtd_reclamacoes: 0,
+    qtd_reclamacoes_senff: 0,
+    qtd_acoes_judiciais: 0,
+    qtd_acoes_judiciais_senff: 0,
+    qtd_indefinidas: 0,
+    canais: [] as (string | null)[],
+  });
   const key = (cid: string, mes: string) => `${cid}|${mesIso(mes)}`;
   for (const r of rec || []) {
     const k = key(r.correspondente_id, r.mes_referencia);
-    const cur = extra.get(k) || {
-      qtd_reclamacoes: 0,
-      qtd_acoes_judiciais: 0,
-      qtd_indefinidas: 0,
-      canais: [] as (string | null)[],
-    };
+    const cur = extra.get(k) || vazio();
     cur.qtd_reclamacoes += 1;
-    if (r.responsavel === "indefinido") cur.qtd_indefinidas += 1;
+    if (eProcedenteSenff(r.responsavel, r.parecer)) cur.qtd_reclamacoes_senff += 1;
+    if (eEmAndamento(r.responsavel, r.parecer)) cur.qtd_indefinidas += 1;
     cur.canais.push(r.canal_origem);
     extra.set(k, cur);
   }
   for (const a of aj || []) {
     const k = key(a.correspondente_id, a.mes_referencia);
-    const cur = extra.get(k) || {
-      qtd_reclamacoes: 0,
-      qtd_acoes_judiciais: 0,
-      qtd_indefinidas: 0,
-      canais: [] as (string | null)[],
-    };
+    const cur = extra.get(k) || vazio();
     cur.qtd_acoes_judiciais += 1;
-    if (a.responsavel === "indefinido") cur.qtd_indefinidas += 1;
+    if (eProcedenteSenff(a.responsavel, a.parecer)) cur.qtd_acoes_judiciais_senff += 1;
+    if (eEmAndamento(a.responsavel, a.parecer)) cur.qtd_indefinidas += 1;
     extra.set(k, cur);
   }
 
@@ -110,8 +112,10 @@ export const carregarClassificacoes = cache(async (): Promise<Classificacao[]> =
       mes_referencia: mes,
       qtd_reclamacoes: c?.qtd_reclamacoes || 0,
       qtd_reclamacoes_corban: row.qtd_reclamacoes_corban || 0,
+      qtd_reclamacoes_senff: c?.qtd_reclamacoes_senff || 0,
       qtd_acoes_judiciais: c?.qtd_acoes_judiciais || 0,
       qtd_acoes_judiciais_corban: row.qtd_acoes_judiciais_corban || 0,
+      qtd_acoes_judiciais_senff: c?.qtd_acoes_judiciais_senff || 0,
       qtd_indefinidas: c?.qtd_indefinidas || 0,
       canal_mais_frequente: c ? moda(c.canais) : null,
       numerador: (row.qtd_reclamacoes_corban || 0) + (row.qtd_acoes_judiciais_corban || 0),

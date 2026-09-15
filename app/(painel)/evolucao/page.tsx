@@ -1,5 +1,7 @@
 import { GraficoBarras, GraficoLinha } from "@/components/Charts";
 import { contextoPainel } from "@/lib/contexto";
+import { mesIso } from "@/lib/format";
+import { createClient } from "@/lib/supabase/server";
 
 export default async function Page({
   searchParams,
@@ -9,6 +11,8 @@ export default async function Page({
   const { mes } = await searchParams;
   const { hist } = await contextoPainel(mes);
   if (!hist.length) return <p>Nenhum mês processado ainda.</p>;
+  const sb = await createClient();
+  const { data: recs } = await sb.from("reclamacoes").select("canal_origem, mes_referencia");
 
   const porMes = new Map<string, { Reclamações: number; "Ações judiciais": number; Numerador: number; "Não conformes": number }>();
   for (const r of hist) {
@@ -24,7 +28,8 @@ export default async function Page({
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([mesKey, v]) => ({ mes: mesKey, ...v }));
 
-  const atual = hist.filter((h) => h.mes_referencia === (mes || hist[0].mes_referencia));
+  const mesAtual = mesIso(mes || hist[0].mes_referencia);
+  const atual = hist.filter((h) => h.mes_referencia === mesAtual);
   const barras = [...atual]
     .sort((a, b) => b.qtd_reclamacoes - a.qtd_reclamacoes)
     .map((r) => ({
@@ -33,11 +38,23 @@ export default async function Page({
       "Ações judiciais": r.qtd_acoes_judiciais,
     }));
 
+  const porCanal = new Map<string, number>();
+  for (const r of recs || []) {
+    if (mesIso(r.mes_referencia) !== mesAtual) continue;
+    const canal = (r.canal_origem || "Sem canal").trim() || "Sem canal";
+    porCanal.set(canal, (porCanal.get(canal) || 0) + 1);
+  }
+  const canais = [...porCanal.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([nome, n]) => ({ nome, Reclamações: n }));
+  const seriesCanal = [{ key: "Reclamações", color: "#05aaca" }];
+
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold">Evolução ao longo dos meses</h2>
       <p className="text-sm text-[var(--senff-navy-text)]">
-        A série cresce a cada fechamento (ETL). Com um único mês processado os gráficos mostram o ponto de partida.
+        A série cresce a cada fechamento (ETL). Reclamações também aparecem quebradas por canal
+        (Banco Central / Bacen, Procon, Ouvidoria, etc.).
       </p>
       <div className="grid gap-4 lg:grid-cols-2">
         <div>
@@ -59,6 +76,12 @@ export default async function Page({
           />
         </div>
       </div>
+      <h3 className="font-semibold">Reclamações do mês por canal</h3>
+      {canais.length ? (
+        <GraficoBarras data={canais} series={seriesCanal} />
+      ) : (
+        <p className="text-sm">Nenhuma reclamação com canal neste mês.</p>
+      )}
       <h3 className="font-semibold">Ocorrências do mês corrente por correspondente</h3>
       <GraficoBarras
         data={barras}

@@ -165,9 +165,9 @@ def transformar(
     if rel.sem_par_na_normal:
         pct = 100 * rel.sem_par_na_normal / len(m)
         rel.avisos.append(
-            f"{rel.sem_par_na_normal} de {len(m)} registros ({pct:.0f}%) sem par no "
-            "export normal (abertos em meses anteriores): marcados como "
-            "responsavel='indefinido' e excluídos do índice até confirmação manual."
+            f"{rel.sem_par_na_normal} de {len(m)} registros ({pct:.0f}%) sem classificação "
+            "final no export normal (abertos em meses anteriores): ficam fora do índice. "
+            "Só entram em andamento se o parecer ainda não for Procedente/Improcedente."
         )
 
     df = pd.DataFrame({
@@ -189,7 +189,9 @@ def transformar(
         "data_cadastro": _parse_data(m["Data Cadastro"]),
         "data_encerramento": _parse_data(m["Data de encerramento"]),
     })
-    df["procedente"] = df["parecer"].str.lower().eq("procedente")
+    df["procedente"] = df["parecer_detalhado"].apply(
+        lambda v: (not pd.isna(v)) and str(v).strip().lower().startswith("procedente")
+    )
     df["responsavel"] = df["parecer_detalhado"].apply(_atribuir_responsavel)
     df["mes_referencia"] = mes_referencia
 

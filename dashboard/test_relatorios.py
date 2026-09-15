@@ -36,7 +36,8 @@ def test_relatorio_contem_indicadores_e_escopo():
     assert "CONECT" in corpo
     assert "Reclamações" in corpo
     assert "Relacionamento" in corpo
-    assert "Alertas" in corpo
+    assert "Alertas" not in corpo
+    assert "automatizado" not in corpo.lower()
 
 
 def test_smtp_ausente_nao_quebra():

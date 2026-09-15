@@ -11,8 +11,10 @@ export type Classificacao = {
   mes_referencia: string;
   qtd_reclamacoes: number;
   qtd_reclamacoes_corban: number;
+  qtd_reclamacoes_senff: number;
   qtd_acoes_judiciais: number;
   qtd_acoes_judiciais_corban: number;
+  qtd_acoes_judiciais_senff: number;
   qtd_indefinidas: number;
   canal_mais_frequente: string | null;
   numerador: number;
