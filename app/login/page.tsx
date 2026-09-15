@@ -1,6 +1,13 @@
+import { ConfiguracaoAusente } from "@/components/ConfiguracaoAusente";
 import { LoginForm } from "@/components/LoginForm";
+import { supabasePublicEnv } from "@/lib/supabase/env";
+
+export const dynamic = "force-dynamic";
 
 export default function LoginPage() {
+  if (!supabasePublicEnv()) {
+    return <ConfiguracaoAusente />;
+  }
   return (
     <main className="flex min-h-screen items-center justify-center bg-[var(--senff-light-grey)] p-6">
       <div className="w-full max-w-md">
