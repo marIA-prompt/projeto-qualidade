@@ -1,12 +1,14 @@
 import { Suspense } from "react";
 import { BotaoSair } from "./BotaoSair";
-import { MesSeletor } from "./MesSeletor";
+import { FiltrosPainel } from "./FiltrosPainel";
 import { Nav } from "./Nav";
+import type { CorrespondenteOpcao } from "@/lib/filtros";
 
 export function Shell(props: {
   email: string;
   papel: string;
   meses: string[];
+  correspondentes: CorrespondenteOpcao[];
   children: React.ReactNode;
 }) {
   return (
@@ -50,7 +52,7 @@ export function Shell(props: {
         </div>
         <main className="mx-auto max-w-6xl space-y-4 p-6">
           <Suspense>
-            <MesSeletor meses={props.meses} />
+            <FiltrosPainel meses={props.meses} correspondentes={props.correspondentes} />
           </Suspense>
           {props.children}
         </main>

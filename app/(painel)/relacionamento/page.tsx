@@ -1,51 +1,76 @@
+import { CampoAcaoRealizada, CampoDataAcao } from "@/components/CamposAcompanhamento";
 import { Tabela } from "@/components/ui";
 import { acaoRelacionamento } from "@/lib/alertas";
 import { contextoPainel } from "@/lib/contexto";
+import { CHAVE_ACOMPANHAMENTO_FILA, chaveAcompanhamentoConversa } from "@/lib/filtros";
 import { PILARES, SUBCRITERIOS } from "@/lib/pilares";
 import { createClient } from "@/lib/supabase/server";
+
+type AcaoSalva = { acao_realizada: boolean; data_acao: string | null };
 
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; corban?: string }>;
 }) {
-  const { mes } = await searchParams;
-  const { df, alertas } = await contextoPainel(mes);
+  const { mes, corban: corbanParam } = await searchParams;
+  const { df, alertas, mes: mesAtual, perfil } = await contextoPainel(mes, corbanParam);
+  const ehStaff = perfil?.role === "staff";
   const sb = await createClient();
-  const { data: aplicadas } = await sb
-    .from("medidas_aplicadas")
-    .select("correspondente_id, data_aplicacao, motivo, medidas_administrativas(nivel, descricao)")
-    .order("data_aplicacao", { ascending: false });
-  const ultimaPorCorr = new Map<string, { acao: string; data: string }>();
-  for (const m of aplicadas || []) {
-    if (!m.correspondente_id || ultimaPorCorr.has(m.correspondente_id)) continue;
-    const med = m.medidas_administrativas as { nivel?: number; descricao?: string } | null;
-    const acao = med?.nivel
-      ? `Nível ${med.nivel} — ${med.descricao || "—"}`
-      : med?.descricao || m.motivo || "Medida registrada";
-    ultimaPorCorr.set(m.correspondente_id, { acao, data: m.data_aplicacao || "—" });
+  const { data: salvas } = await sb
+    .from("acompanhamento_acoes")
+    .select("correspondente_id, chave, acao_realizada, data_acao")
+    .eq("mes_referencia", mesAtual);
+  const mapa = new Map<string, AcaoSalva>();
+  for (const s of salvas || []) {
+    mapa.set(`${s.correspondente_id}|${s.chave}`, {
+      acao_realizada: Boolean(s.acao_realizada),
+      data_acao: s.data_acao || null,
+    });
+  }
+  function campos(correspondenteId: string, chave: string) {
+    const atual = mapa.get(`${correspondenteId}|${chave}`);
+    return {
+      acao: (
+        <CampoAcaoRealizada
+          correspondenteId={correspondenteId}
+          mes={mesAtual}
+          chave={chave}
+          inicial={Boolean(atual?.acao_realizada)}
+          ehStaff={Boolean(ehStaff)}
+        />
+      ),
+      data: (
+        <CampoDataAcao
+          key={atual?.data_acao || "vazio"}
+          correspondenteId={correspondenteId}
+          mes={mesAtual}
+          chave={chave}
+          inicial={atual?.data_acao || null}
+          ehStaff={Boolean(ehStaff)}
+        />
+      ),
+    };
   }
 
   const rel = alertas.filter((a) =>
     ["relacionamento", "volume_reclamacoes", "nao_conforme"].includes(a.tipo),
   );
-  const abertos = rel.filter((a) => !ultimaPorCorr.has(a.correspondente_id));
   const ranking = [...df]
     .sort((a, b) => b.qtd_reclamacoes - a.qtd_reclamacoes)
     .slice(0, 10)
     .map((r) => {
-      const feita = ultimaPorCorr.get(r.correspondente_id);
+      const chave = CHAVE_ACOMPANHAMENTO_FILA;
+      const feito = campos(r.correspondente_id, chave);
       return {
         c: r.correspondente,
         cnpj: r.cnpj,
         rec: r.qtd_reclamacoes,
         canal: r.canal_mais_frequente || "—",
         status: r.status,
-        passo: feita
-          ? "Concluído"
-          : acaoRelacionamento(alertas.filter((a) => a.correspondente === r.correspondente)),
-        acao: feita?.acao || "—",
-        data: feita?.data || "—",
+        passo: acaoRelacionamento(alertas.filter((a) => a.correspondente_id === r.correspondente_id)),
+        acao: feito.acao,
+        data: feito.data,
       };
     });
 
@@ -56,7 +81,7 @@ export default async function Page({
         Qualidade de Correspondentes não é só índice e sanção. O pilar{" "}
         <strong>{PILARES.relacionamento_cliente}</strong> avalia clareza, linguagem, atendimento,
         respeito ao consumidor e oferta responsável. A conversa vem antes da medida punitiva.
-        Registrar a medida em Medidas administrativas conclui o item aqui.
+        Marque a ação realizada e a data aqui; a medida formal continua em Medidas administrativas.
       </p>
       <ul className="list-disc pl-5 text-sm">
         {Object.values(SUBCRITERIOS.relacionamento_cliente).map((r) => (
@@ -64,7 +89,7 @@ export default async function Page({
         ))}
       </ul>
       <h3 className="font-semibold">Onde o relacionamento pede conversa neste mês</h3>
-      {abertos.length ? (
+      {rel.length ? (
         <Tabela
           colunas={[
             { chave: "c", titulo: "Correspondente" },
@@ -72,12 +97,15 @@ export default async function Page({
             { chave: "acao", titulo: "Ação realizada" },
             { chave: "data", titulo: "Data" },
           ]}
-          linhas={abertos.map((a) => ({
-            c: a.correspondente,
-            m: a.mensagem,
-            acao: "—",
-            data: "—",
-          }))}
+          linhas={rel.map((a) => {
+            const feito = campos(a.correspondente_id, chaveAcompanhamentoConversa(a.tipo));
+            return {
+              c: a.correspondente,
+              m: a.mensagem,
+              acao: feito.acao,
+              data: feito.data,
+            };
+          })}
         />
       ) : (
         <p>Nenhum correspondente com conversa de relacionamento em aberto neste mês.</p>

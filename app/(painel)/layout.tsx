@@ -21,7 +21,12 @@ export default async function PainelLayout({ children }: { children: React.React
     );
   }
   return (
-    <Shell email={ctx.email} papel={ctx.perfil.role} meses={ctx.meses}>
+    <Shell
+      email={ctx.email}
+      papel={ctx.perfil.role}
+      meses={ctx.meses}
+      correspondentes={ctx.correspondentes}
+    >
       {children}
     </Shell>
   );

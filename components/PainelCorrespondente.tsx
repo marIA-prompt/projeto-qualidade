@@ -12,11 +12,13 @@ export function PainelCorrespondente({
   hist,
   resumo,
   alertas,
+  filtroGlobal,
 }: {
   df: Classificacao[];
   hist: Classificacao[];
   resumo: ResumoAuditoria[];
   alertas: Alerta[];
+  filtroGlobal?: boolean;
 }) {
   const opcoes = useMemo(
     () => [...df].sort((a, b) => b.qtd_reclamacoes - a.qtd_reclamacoes),
@@ -40,17 +42,23 @@ export function PainelCorrespondente({
   return (
     <section className="space-y-4">
       <h2 className="text-xl font-semibold">Painel visual por correspondente</h2>
-      <select
-        className="max-w-lg rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
-        value={escolhido.correspondente_id}
-        onChange={(e) => setId(e.target.value)}
-      >
-        {opcoes.map((r) => (
-          <option key={r.correspondente_id} value={r.correspondente_id}>
-            {r.correspondente} ({r.cnpj})
-          </option>
-        ))}
-      </select>
+      {filtroGlobal ? (
+        <p className="text-sm text-[var(--senff-navy-text)]">
+          Correspondente definido no filtro ao lado do mês: {escolhido.correspondente}.
+        </p>
+      ) : (
+        <select
+          className="max-w-lg rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
+          value={escolhido.correspondente_id}
+          onChange={(e) => setId(e.target.value)}
+        >
+          {opcoes.map((r) => (
+            <option key={r.correspondente_id} value={r.correspondente_id}>
+              {r.correspondente} ({r.cnpj})
+            </option>
+          ))}
+        </select>
+      )}
       <div className="grid gap-3 sm:grid-cols-4">
         <Kpi label="Reclamações" value={String(escolhido.qtd_reclamacoes)} />
         <Kpi label="Ações judiciais" value={String(escolhido.qtd_acoes_judiciais)} />

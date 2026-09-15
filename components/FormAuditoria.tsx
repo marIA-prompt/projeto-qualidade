@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { registrarAuditoria } from "@/app/actions";
 import { PILARES, ROTULOS_NOTA, SUBCRITERIOS, pontuacaoPilar } from "@/lib/pilares";
 
@@ -14,6 +14,8 @@ export function FormAuditoria({
   const subs = SUBCRITERIOS[pilar];
   const [notas, setNotas] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const pontuacao = useMemo(() => pontuacaoPilar(notas), [notas]);
 
   return (
@@ -25,6 +27,10 @@ export function FormAuditoria({
         for (const [k, v] of Object.entries(notas)) fd.set(`sub_${k}`, v);
         const r = await registrarAuditoria(fd);
         setMsg(r.ok ? "Auditoria gravada." : r.erro);
+        if (r.ok) {
+          setArquivo(null);
+          if (inputRef.current) inputRef.current.value = "";
+        }
       }}
     >
       <h2 className="text-xl font-semibold">Registrar resultado de auditoria</h2>
@@ -111,15 +117,29 @@ export function FormAuditoria({
         placeholder="Observações (auditável)"
         className="w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
       />
-      <label className="block text-sm">
-        Relatório da auditoria (PDF)
-        <input
-          type="file"
-          name="anexo"
-          accept="application/pdf,.pdf"
-          className="mt-1 block w-full text-sm"
-        />
-      </label>
+      <input
+        ref={inputRef}
+        type="file"
+        name="anexo"
+        accept="application/pdf,.pdf"
+        className="sr-only"
+        onChange={(e) => setArquivo(e.target.files?.[0] || null)}
+      />
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 rounded-[var(--radius-box)] border-2 border-dashed border-[var(--senff-acqua)] bg-[#e8f7fb] px-4 py-3 text-left hover:bg-[#d7f1f8]"
+        onClick={() => inputRef.current?.click()}
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--senff-acqua)] text-xs font-bold text-white">
+          PDF
+        </span>
+        <span>
+          <span className="block font-semibold text-[var(--senff-navy)]">Anexar relatório da auditoria</span>
+          <span className="text-sm text-[var(--senff-navy-text)]">
+            {arquivo ? arquivo.name : "Clique para escolher um arquivo PDF"}
+          </span>
+        </span>
+      </button>
       <button className="btn-primary" type="submit">
         Gravar auditoria
       </button>

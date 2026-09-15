@@ -2,31 +2,47 @@ import { GraficoBarras } from "@/components/Charts";
 import { Chip, Kpis, Tabela } from "@/components/ui";
 import { contextoPainel } from "@/lib/contexto";
 import { montarLinhasExport } from "@/lib/dados";
+import { barrasCanal, topOcorrencias } from "@/lib/filtros";
 import { csvFechamento } from "@/lib/relatorios";
 import { createClient } from "@/lib/supabase/server";
 import { fmtIndice } from "@/lib/format";
 
+const SERIES_CANAL = [{ key: "Reclamações", color: "#05aaca" }];
+
 export default async function Page({
   searchParams,
 }: {
-  searchParams: Promise<{ mes?: string }>;
+  searchParams: Promise<{ mes?: string; corban?: string }>;
 }) {
-  const { mes } = await searchParams;
-  const ctx = await contextoPainel(mes);
-  const { df } = ctx;
-  if (!df.length) return <p>Nenhum mês processado ainda. Rode o ETL de reclamações.</p>;
+  const { mes, corban: corbanParam } = await searchParams;
+  const ctx = await contextoPainel(mes, corbanParam);
+  const { df, corban } = ctx;
+  if (!df.length) {
+    return (
+      <p>
+        {corban
+          ? "Nenhum dado deste correspondente neste mês."
+          : "Nenhum mês processado ainda. Rode o ETL de reclamações."}
+      </p>
+    );
+  }
   const sb = await createClient();
-  const { data: rec } = await sb
+  const recSel = sb
     .from("reclamacoes")
-    .select("correspondente_id, responsavel, parecer")
+    .select("correspondente_id, responsavel, parecer, canal_origem")
     .eq("mes_referencia", ctx.mes);
-  const { data: aj } = await sb
+  const ajSel = sb
     .from("acoes_judiciais")
     .select("correspondente_id, responsavel, parecer")
     .eq("mes_referencia", ctx.mes);
-  const exportDf = montarLinhasExport(df, rec || [], aj || []);
+  const [{ data: rec }, { data: aj }] = await Promise.all([recSel, ajSel]);
+  const recMes = (rec || []).filter((r) => !corban || r.correspondente_id === corban);
+  const ajMes = (aj || []).filter((r) => !corban || r.correspondente_id === corban);
+  const exportDf = montarLinhasExport(df, recMes, ajMes);
   const csv = csvFechamento(exportDf);
   const andamento = df.reduce((s, r) => s + r.qtd_indefinidas, 0);
+  const canais = barrasCanal(recMes, { mes: ctx.mes, corban });
+  const barrasCorr = topOcorrencias(df, corban ? df.length : 10);
 
   return (
     <section className="space-y-4">
@@ -84,15 +100,17 @@ export default async function Page({
         CSV no formato do analista, no que o schema V1 permite. Não inclui encaminhamentos a
         Fraudes nem tipo de reclamação.
       </p>
-      <h3 className="font-semibold">Ocorrências por correspondente</h3>
+      <h3 className="font-semibold">Reclamações por canal</h3>
+      {canais.length ? (
+        <GraficoBarras data={canais} series={SERIES_CANAL} />
+      ) : (
+        <p className="text-sm">Nenhuma reclamação com canal neste mês.</p>
+      )}
+      <h3 className="font-semibold">
+        {corban ? "Ocorrências do correspondente" : "Ocorrências por correspondente (top 10)"}
+      </h3>
       <GraficoBarras
-        data={[...df]
-          .sort((a, b) => b.qtd_reclamacoes - a.qtd_reclamacoes)
-          .map((r) => ({
-            nome: r.correspondente,
-            Reclamações: r.qtd_reclamacoes,
-            "Ações judiciais": r.qtd_acoes_judiciais,
-          }))}
+        data={barrasCorr}
         series={[
           { key: "Reclamações", color: "#05aaca" },
           { key: "Ações judiciais", color: "#112369" },
