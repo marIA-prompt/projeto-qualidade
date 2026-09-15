@@ -61,6 +61,19 @@ administrativas.
    **evolução mensal**,    **alertas e relatórios**, **relacionamento**, fechamento, **fila de indefinidos**,
    auditorias e medidas.
 
+## Preview público (não é Vercel)
+
+Este painel é **Streamlit** (processo contínuo + WebSocket). A Vercel só
+hospeda função serverless — não sobe este app. O preview com URL compartilável
+é o [Streamlit Community Cloud](https://share.streamlit.io):
+
+1. Entre com GitHub e autorize `marIA-prompt/projeto-qualidade`.
+2. **New app** → branch da entrega, *Main file path* `dashboard/app.py`.
+3. **Settings → Secrets**: cole `SUPABASE_URL` e `SUPABASE_ANON_KEY`
+   (modelo em `.streamlit/secrets.toml.example`). Sem `service_role`, sem
+   senha, sem `DASHBOARD_PREVIEW_AUTOLOGIN`.
+4. Login no app: `maria.morais@senff.com.br`.
+
 ## Testes
 
 ```bash

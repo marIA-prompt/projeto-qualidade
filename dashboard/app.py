@@ -47,6 +47,22 @@ EMAIL_STAFF_PADRAO = "maria.morais@senff.com.br"
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+
+def _segredo(nome: str) -> str | None:
+    """Lê .env local ou Secrets do Streamlit Cloud (preview público)."""
+    val = os.environ.get(nome)
+    if val:
+        return val.strip().strip("'").strip('"') or None
+    try:
+        bruto = st.secrets[nome]
+    except Exception:
+        return None
+    if bruto is None:
+        return None
+    texto = str(bruto).strip().strip("'").strip('"')
+    return texto or None
+
+
 st.set_page_config(
     page_title="Plano de Qualidade · Banco Senff",
     page_icon=str(LOGO_NAVY) if LOGO_NAVY.exists() else "🏦",
@@ -63,10 +79,13 @@ ROTULOS_STATUS = {
 
 @st.cache_resource
 def _cliente_base():
-    url = os.environ.get("SUPABASE_URL")
-    anon = os.environ.get("SUPABASE_ANON_KEY")
+    url = _segredo("SUPABASE_URL")
+    anon = _segredo("SUPABASE_ANON_KEY")
     if not url or not anon:
-        st.error("Configure SUPABASE_URL e SUPABASE_ANON_KEY no .env (ver .env.example).")
+        st.error(
+            "Configure SUPABASE_URL e SUPABASE_ANON_KEY no .env local "
+            "ou em Secrets do Streamlit Cloud. Nunca use a service_role aqui."
+        )
         st.stop()
     return create_client(url, anon)
 
