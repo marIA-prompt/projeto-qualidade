@@ -2,6 +2,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type RGB } from "pdf-lib
 import {
   RELACIONAMENTO_PADRAO,
   STATUS_LABELS,
+  textoPdfSeguro,
   type DadosRelatorio,
 } from "./relatorioModelo";
 
@@ -17,15 +18,13 @@ const AMBER_BG = rgb(0xfb / 255, 0xf3 / 255, 0xdf / 255);
 const CARD = rgb(0xee / 255, 0xf1 / 255, 0xf8 / 255);
 
 function win(texto: string): string {
-  return texto
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .replaceAll("—", "-")
-    .replaceAll("–", "-")
-    .replaceAll("“", '"')
-    .replaceAll("”", '"')
-    .replaceAll("’", "'")
-    .replaceAll("·", "-");
+  return textoPdfSeguro(texto);
+}
+
+function caber(font: PDFFont, texto: string, size: number, max: number): string {
+  let t = win(texto);
+  while (t.length > 1 && font.widthOfTextAtSize(t, size) > max) t = t.slice(0, -1);
+  return t;
 }
 
 function wrap(font: PDFFont, text: string, size: number, max: number): string[] {
@@ -125,16 +124,15 @@ export async function relatorioPdf(dados: DadosRelatorio): Promise<Uint8Array> {
   metas.forEach((m, i) => {
     const x = ml + i * col;
     page.drawText(win(m[0]), { x, y, size: 7, font: bold, color: LABEL });
-    page.drawText(win(m[1]), {
+    page.drawText(caber(bold, m[1], 10, col - 8), {
       x,
       y: y - 14,
       size: 10,
       font: bold,
       color: i === 2 ? statusColor : NAVY_DARK,
-      maxWidth: col - 8,
     });
     if (m[2]) {
-      page.drawText(win(m[2]), { x, y: y - 26, size: 8, font, color: LABEL, maxWidth: col - 8 });
+      page.drawText(caber(font, m[2], 8, col - 8), { x, y: y - 26, size: 8, font, color: LABEL });
     }
   });
   y -= 44;
@@ -228,13 +226,12 @@ export async function relatorioPdf(dados: DadosRelatorio): Promise<Uint8Array> {
       font: bold,
       color: NAVY_DARK,
     });
-    page.drawText(win("Disponivel a partir do 2o mes consecutivo de acompanhamento do correspondente."), {
+    page.drawText(caber(italic, "Disponivel a partir do 2o mes consecutivo de acompanhamento do correspondente.", 9, width - 24), {
       x: ml + 12,
       y: y - 40,
       size: 9,
       font: italic,
       color: LABEL,
-      maxWidth: width - 24,
     });
     y -= 70;
   }

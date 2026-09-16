@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import type { Classificacao } from "./types.ts";
 import {
   mesPorExtenso,
   montarDadosRelatorio,
   relatorioHtml,
   relatorioMarkdown,
+  textoPdfSeguro,
 } from "./relatorioModelo.ts";
 
 function linha(p: Partial<Classificacao> & Pick<Classificacao, "correspondente" | "mes_referencia">): Classificacao {
@@ -96,3 +98,24 @@ test("evolução fica disponível no segundo mês", () => {
   assert.equal(dados.evolucao.pontos.length, 2);
   assert.ok(relatorioHtml(dados).includes("evo-chart"));
 });
+
+test("texto do PDF troca ≥ e mantém acentos latin-1", () => {
+  const t = textoPdfSeguro("CONECT teve 41 reclamações (corte ≥ 3) no canal ‘Procon’.");
+  assert.equal(t.includes("≥"), false);
+  assert.match(t, />= 3/);
+  assert.match(t, /reclamações/);
+  assert.match(t, /'Procon'/);
+  assert.equal(/[^\u0020-\u007e\u00a0-\u00ff]/.test(t), false);
+});
+
+test("Helvetica rejeita ≥ cru e aceita o texto sanitizado", async () => {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const page = doc.addPage();
+  const bruto = "CONECT teve 41 reclamações no mês (corte de aplicabilidade ≥ 3).";
+  assert.throws(() => page.drawText(bruto, { x: 10, y: 100, size: 10, font }));
+  page.drawText(textoPdfSeguro(bruto), { x: 10, y: 80, size: 10, font });
+  const bytes = await doc.save();
+  assert.ok(bytes.byteLength > 500);
+});
+

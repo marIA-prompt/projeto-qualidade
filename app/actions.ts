@@ -180,10 +180,23 @@ export async function gerarERegistrarRelatorio(formData: FormData) {
     mime = "text/markdown;charset=utf-8";
     filename = nomeArquivoRelatorio(dados, "md");
   } else if (formato === "pdf") {
-    const bytes = await relatorioPdf(dados);
-    base64 = Buffer.from(bytes).toString("base64");
-    mime = "application/pdf";
-    filename = nomeArquivoRelatorio(dados, "pdf");
+    try {
+      const bytes = await relatorioPdf(dados);
+      base64 = Buffer.from(bytes).toString("base64");
+      mime = "application/pdf";
+      filename = nomeArquivoRelatorio(dados, "pdf");
+    } catch (e) {
+      const detalhe = e instanceof Error ? e.message : "falha desconhecida";
+      return {
+        ok: false,
+        erro: `Não foi possível gerar o PDF (${detalhe}). Tente HTML ou Markdown.`,
+        filename: "",
+        mime: "",
+        texto: null,
+        base64: null,
+        registrado: false,
+      };
+    }
   } else {
     texto = relatorioHtml(dados);
   }

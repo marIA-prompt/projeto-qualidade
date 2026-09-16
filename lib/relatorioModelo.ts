@@ -119,6 +119,36 @@ export function dataBr(iso: string, agora = new Date()): string {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
+/** Helvetica da pdf-lib só grava WinAnsi. Troca ≥ e afins; mantém acentos latin-1. */
+export function textoPdfSeguro(valor: string): string {
+  const mapa: Record<string, string> = {
+    "—": "-",
+    "–": "-",
+    "−": "-",
+    "“": '"',
+    "”": '"',
+    "„": '"',
+    "‟": '"',
+    "‘": "'",
+    "’": "'",
+    "•": "-",
+    "…": "...",
+    "≥": ">=",
+    "≤": "<=",
+    "≠": "!=",
+    "×": "x",
+    "\u00a0": " ",
+  };
+  return Array.from(String(valor ?? ""), (ch) => {
+    if (mapa[ch]) return mapa[ch];
+    const c = ch.codePointAt(0) ?? 0;
+    if (c === 9 || c === 10 || c === 13) return " ";
+    if (c >= 0x20 && c <= 0x7e) return ch;
+    if (c >= 0xa0 && c <= 0xff) return ch;
+    return "?";
+  }).join("");
+}
+
 export function escapeHtml(s: string): string {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
