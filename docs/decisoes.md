@@ -83,8 +83,8 @@ encaminhamentos a Fraudes bateram 100%.
    decisão caso a caso da Gestora de Qualidade; o sistema apenas registra.
    A aba Relacionamento prioriza conversa / reorientação / notificação.
 6. **Pontuação de pilar (FR-3)** — média simples dos subcritérios avaliados
-   (ok=100, parcial=50, nao_ok=0). Não substitui o Quadro 3 anual até a área
-   validar limiares e o cruzamento com desvio de conduta grave.
+   (ok=100, parcial=50, nao_ok=0). Entra na componente qualitativa do Quadro 3
+   anual quando houver auditoria no ano.
 7. **Carteira produzida** — a área adiou a planilha completa; o status mensal
    permanece `nao_aplicavel` até haver denominador.
 8. **Visual do painel** — tokens no padrão Pulso (espaçamento pulse, radius,
@@ -97,3 +97,15 @@ encaminhamentos a Fraudes bateram 100%.
 10. **Requisitos Bruna Camargo** no painel: visão por correspondente, alertas
     automatizados nas métricas, relatório mensal (download + SMTP) e vertente
     de relacionamento (pilar + fila de acompanhamento).
+11. **Quadro 3 anual (16/09/2026)** — tela `Monitoramento anual`, irmã da
+    Relatoria. Pontuação geral = média das componentes disponíveis no ano
+    (operacional = 100 × (1 − numerador Corban / ocorrências do ano);
+    qualitativa = média dos pilares auditados). Sem componente, status
+    `nao_aplicavel` (não inventa zero). Faixas: ≥90% Conforme, 75–89%
+    Parcialmente conforme, 45–74% Em atenção, <45% Não conforme. Com desvio
+    de conduta grave, Conforme e Parcialmente conforme caem para Em atenção.
+    Medidas do ciclo anual (aplicação manual): 1ª Advertência, 2ª consecutiva
+    Suspensão de 10 dias úteis, 3ª Suspensão definitiva; Parcialmente
+    conforme ou Conforme zeram o ciclo. Dump navigate mar–set/2026 carregado
+    por `etl/carregar_periodo.py`; agosto/2026 **não** foi regravado (fechamento
+    oficial já validado).

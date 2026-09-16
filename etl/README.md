@@ -11,6 +11,11 @@ Scripts de ingestão e limpeza dos exports do sistema **navigate**.
   (`carteira_produzida`). Planilha modelo: `modelo_carteira_produzida.csv`.
   Depois de gravar, recalcula `classificacoes_mensais` do mês (não precisa
   reimportar o navigate).
+- `carregar_periodo.py` — parte um dump detalhada+normal por mês de
+  encerramento e grava cada mês. `--pular-meses 2026-08` preserva o
+  fechamento oficial de agosto.
+- `classificar_anual.py` — calcula `classificacoes_anuais` (Quadro 3) a
+  partir das ocorrências e auditorias já no banco.
 - `test_etl_reclamacoes.py` / `test_etl_carteira.py` — testes com dados
   sintéticos (nenhum dado real/PII entra no repositório).
 

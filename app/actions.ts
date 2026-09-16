@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { logConfirmacao, payloadConfirmacao } from "@/lib/indefinidos";
 import { alertasDoMes, carregarPerfil, carregarClassificacoes, reclassificarMes, resumoAuditorias } from "@/lib/dados";
+import { carregarClassificacoesAnuais } from "@/lib/anual";
+import { classificarAnual } from "@/lib/motorAnual";
 import { pontuacaoPilar } from "@/lib/pilares";
 import { chaveAcompanhamentoValida } from "@/lib/filtros";
 import {
@@ -14,6 +16,14 @@ import {
   type MedidaHistorico,
 } from "@/lib/relatorioModelo";
 import { relatorioPdf } from "@/lib/relatorioPdf";
+import {
+  assuntoRelatorioAnual,
+  montarDadosRelatorioAnual,
+  nomeArquivoRelatorioAnual,
+  relatorioHtmlAnual,
+  relatorioMarkdownAnual,
+} from "@/lib/relatorioAnual";
+import { relatorioPdfAnual } from "@/lib/relatorioAnualPdf";
 import { createClient } from "@/lib/supabase/server";
 import { mesIso } from "@/lib/format";
 
@@ -103,6 +113,7 @@ export async function registrarAuditoria(formData: FormData) {
   });
   if (error) return { ok: false, erro: error.message };
   revalidatePath("/auditorias");
+  revalidatePath("/monitoramento-anual");
   revalidatePath("/");
   return { ok: true, erro: null };
 }
@@ -115,10 +126,12 @@ export async function registrarMedida(formData: FormData) {
   const data_aplicacao = String(formData.get("data_aplicacao") || "");
   const motivo = String(formData.get("motivo") || "") || null;
   const classif_id = String(formData.get("classificacao_id") || "") || null;
+  const classif_anual_id = String(formData.get("classificacao_anual_id") || "") || null;
   const { error } = await sb.from("medidas_aplicadas").insert({
     correspondente_id,
     medida_id,
     classificacao_mensal_id: classif_id,
+    classificacao_anual_id: classif_anual_id,
     data_aplicacao,
     aplicada_por: userId,
     motivo,
@@ -220,6 +233,122 @@ export async function gerarERegistrarRelatorio(formData: FormData) {
   }
 
   return { ok: true, erro: null, filename, mime, texto, base64, registrado };
+}
+
+export async function gerarERegistrarRelatorioAnual(formData: FormData) {
+  const { userId, perfil } = await carregarPerfil();
+  const ano = Number(formData.get("ano"));
+  if (!Number.isInteger(ano) || ano < 2020 || ano > 2100) {
+    return { ok: false, erro: "Ano inválido.", filename: "", mime: "", texto: null, base64: null, registrado: false };
+  }
+  const destinatario = String(formData.get("destinatario") || "").trim() || "maria.morais@senff.com.br";
+  const correspondente = String(formData.get("correspondente") || "") || null;
+  const formato = String(formData.get("formato") || "html");
+  if (!["html", "md", "pdf"].includes(formato)) {
+    return { ok: false, erro: "Formato inválido.", filename: "", mime: "", texto: null, base64: null, registrado: false };
+  }
+  const linhas = await carregarClassificacoesAnuais(ano);
+  const recorte = correspondente ? linhas.filter((r) => r.correspondente === correspondente) : linhas;
+  const sb = await createClient();
+  const { data: aplicadas } = await sb
+    .from("medidas_aplicadas")
+    .select("data_aplicacao, motivo, correspondente_id, correspondentes(nome), medidas_administrativas(nivel, descricao, codigo), classificacao_anual_id")
+    .not("classificacao_anual_id", "is", null)
+    .order("data_aplicacao", { ascending: false });
+  const medidas: MedidaHistorico[] = (aplicadas || []).map((m) => {
+    const corr = m.correspondentes as { nome?: string } | null;
+    const med = m.medidas_administrativas as { nivel?: number; descricao?: string; codigo?: string } | null;
+    const tipo = med?.nivel ? `Nível ${med.nivel}` : med?.codigo || "Medida";
+    const descricao = med?.descricao || m.motivo || "Medida registrada";
+    return {
+      correspondente_id: m.correspondente_id,
+      correspondente: corr?.nome,
+      data_aplicacao: m.data_aplicacao,
+      tipo,
+      descricao: m.motivo ? `${descricao} (${m.motivo})` : descricao,
+    };
+  });
+  const dados = montarDadosRelatorioAnual({ ano, linhas: recorte, correspondente, medidas });
+  const assunto = assuntoRelatorioAnual(dados);
+  const md = relatorioMarkdownAnual(dados);
+  let texto: string | null = null;
+  let base64: string | null = null;
+  let mime = "text/html;charset=utf-8";
+  let filename = nomeArquivoRelatorioAnual(dados, "html");
+  if (formato === "md") {
+    texto = md;
+    mime = "text/markdown;charset=utf-8";
+    filename = nomeArquivoRelatorioAnual(dados, "md");
+  } else if (formato === "pdf") {
+    try {
+      const bytes = await relatorioPdfAnual(dados);
+      base64 = Buffer.from(bytes).toString("base64");
+      mime = "application/pdf";
+      filename = nomeArquivoRelatorioAnual(dados, "pdf");
+    } catch (e) {
+      const detalhe = e instanceof Error ? e.message : "falha desconhecida";
+      return {
+        ok: false,
+        erro: `Não foi possível gerar o PDF (${detalhe}). Tente HTML ou Markdown.`,
+        filename: "",
+        mime: "",
+        texto: null,
+        base64: null,
+        registrado: false,
+      };
+    }
+  } else {
+    texto = relatorioHtmlAnual(dados);
+  }
+
+  let registrado = false;
+  if (perfil?.role === "staff") {
+    const { error } = await sb.from("relatorios_mensais").insert({
+      mes_referencia: `${ano}-01-01`,
+      destinatario,
+      assunto,
+      corpo: md,
+      status: "gerado",
+      erro: null,
+      enviado_por: userId,
+    });
+    if (error) {
+      return { ok: false, erro: error.message, filename: "", mime: "", texto: null, base64: null, registrado: false };
+    }
+    registrado = true;
+    revalidatePath("/monitoramento-anual");
+  }
+  return { ok: true, erro: null, filename, mime, texto, base64, registrado };
+}
+
+export async function marcarDesvioGrave(formData: FormData) {
+  const userId = await exigirStaff();
+  const correspondente_id = String(formData.get("correspondente_id") || "");
+  const ano = Number(formData.get("ano"));
+  const desvio = String(formData.get("desvio") || "") === "1";
+  if (!correspondente_id || !Number.isInteger(ano)) return { ok: false, erro: "Dados incompletos." };
+  const linhas = await carregarClassificacoesAnuais(ano);
+  const linha = linhas.find((r) => r.correspondente_id === correspondente_id);
+  const resultado = classificarAnual({
+    pontuacaoGeral: linha?.pontuacao_geral ?? null,
+    desvioCondutaGrave: desvio,
+  });
+  const sb = await createClient();
+  const { error } = await sb.from("classificacoes_anuais").upsert(
+    {
+      correspondente_id,
+      ano_referencia: ano,
+      pontuacao_geral: resultado.pontuacao,
+      desvio_conduta_grave: desvio,
+      status: resultado.status === "nao_aplicavel" ? null : resultado.status,
+      calculado_em: new Date().toISOString(),
+    },
+    { onConflict: "correspondente_id,ano_referencia" },
+  );
+  if (error) return { ok: false, erro: error.message };
+  void userId;
+  revalidatePath("/monitoramento-anual");
+  return { ok: true, erro: null };
 }
 
 export async function registrarAcompanhamento(formData: FormData) {

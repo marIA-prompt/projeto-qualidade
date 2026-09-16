@@ -12,7 +12,9 @@ lógica de negócio espalhada no dashboard.
 - `test_classificacao.py` — testes pytest: conforme, não conforme, limite
   exato, sem denominador, corte não atingido e registros indefinidos.
 
-O Quadro 3 (classificação anual, art. 5º) é Fase 2 e será adicionado aqui.
+O Quadro 3 (classificação anual, art. 5º) está em `anual.py`: pontuação geral
+(média das componentes disponíveis), cruzamento com desvio de conduta grave e
+ciclo de medidas (advertência → suspensão de 10 dias → suspensão definitiva).
 
 **Importante**: nenhuma camada de IA decide classificação regulatória. Este
 motor é a única fonte do status, para ser auditável.

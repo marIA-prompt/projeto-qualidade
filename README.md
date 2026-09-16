@@ -4,10 +4,10 @@ Sistema interno de compliance do Banco Senff para o **Plano de Qualidade de
 Correspondentes** exigido pela Autorregulação do Crédito Consignado (FEBRABAN)
 — arts. 50–55 do Normativo Correlato e art. 5º do Anexo I.
 
-A V1 cobre o fechamento **mensal** (Quadro 5, art. 9º): ingestão dos exports do
-navigate, cálculo do índice de reclamações/ações judiciais procedentes-Corban,
-painel por correspondente com isolamento via RLS e registro manual de medidas
-administrativas.
+A V1 cobre o fechamento **mensal** (Quadro 5, art. 9º) e o monitoramento
+**anual** (Quadro 3, art. 5º): ingestão dos exports do navigate, cálculo do
+índice mensal e da pontuação anual, painel por correspondente com isolamento
+via RLS e registro manual de medidas administrativas.
 
 ## Estrutura
 
@@ -90,8 +90,8 @@ indefinidos) e as regras de cruzamento e dedupe do ETL com dados sintéticos.
 - **Nenhuma classificação regulatória é decidida por IA** — o motor é
   determinístico e auditável; a camada OpenAI (Fase 3) apenas redige narrativa.
 - **Registros "indefinidos" nunca entram no índice** sem confirmação manual.
-- **Fora de escopo ainda**: classificação anual automática (Quadro 3) e
-  Agentes de Crédito. Auditorias são entrada **manual** (FR-3). Alertas
+- **Fora de escopo ainda**: Agentes de Crédito. Auditorias são entrada
+  **manual** (FR-3) e alimentam a pontuação qualitativa anual. Alertas
   automatizados e relatórios mensais (download + SMTP) estão no painel.
 
 Fonte de verdade do escopo: `docs/Briefing_Plano_Qualidade_Correspondentes_v1.1.pdf`.
