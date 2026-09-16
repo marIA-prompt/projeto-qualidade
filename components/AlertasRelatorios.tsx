@@ -1,37 +1,81 @@
 "use client";
 
-import { useState } from "react";
-import { registrarRelatorio } from "@/app/actions";
+import { useMemo, useState, useTransition } from "react";
+import { gerarERegistrarRelatorio } from "@/app/actions";
 import { Tabela } from "@/components/ui";
-import { CRITERIOS_SEVERIDADE } from "@/lib/alertas";
+import { CRITERIOS_SEVERIDADE, type Alerta } from "@/lib/alertas";
 import { ROTULOS_SEV } from "@/lib/format";
-import { montarRelatorioMensal } from "@/lib/relatorios";
-import type { Alerta } from "@/lib/alertas";
+import {
+  montarDadosRelatorio,
+  relatorioHtml,
+  type MedidaHistorico,
+} from "@/lib/relatorioModelo";
 import type { Classificacao } from "@/lib/types";
+
+function baixarArquivo(filename: string, mime: string, texto: string | null, base64: string | null) {
+  let blob: Blob;
+  if (base64) {
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    blob = new Blob([bytes], { type: mime });
+  } else {
+    blob = new Blob([texto || ""], { type: mime });
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function AlertasRelatorios({
   mes,
   df,
+  hist,
   alertas,
+  medidas,
   historico,
+  destPadrao,
   ehStaff,
 }: {
   mes: string;
   df: Classificacao[];
+  hist: Classificacao[];
   alertas: Alerta[];
-  historico: { created_at: string; mes_referencia: string | null; destinatario: string; assunto: string; status: string; erro: string | null }[];
+  medidas: MedidaHistorico[];
+  historico: {
+    created_at: string;
+    mes_referencia: string | null;
+    destinatario: string;
+    assunto: string;
+    status: string;
+    erro: string | null;
+  }[];
+  destPadrao: string;
   ehStaff: boolean;
 }) {
-  const nomes = ["Todos", ...[...new Set(df.map((r) => r.correspondente))].sort()];
-  const [alvo, setAlvo] = useState("Todos");
-  const [dest, setDest] = useState("maria.morais@senff.com.br");
+  const nomes = [...new Set(df.map((r) => r.correspondente))].sort();
+  const [alvo, setAlvo] = useState(nomes.length === 1 ? nomes[0] : "Todos");
+  const [dest, setDest] = useState(destPadrao || "maria.morais@senff.com.br");
+  const [formato, setFormato] = useState<"html" | "md" | "pdf">("html");
   const [msg, setMsg] = useState<string | null>(null);
+  const [pendente, start] = useTransition();
   const recorte = alvo === "Todos" ? df : df.filter((r) => r.correspondente === alvo);
-  const { assunto, corpo } = montarRelatorioMensal({
-    mes,
-    linhas: recorte,
-    correspondente: alvo === "Todos" ? null : alvo,
-  });
+  const dados = useMemo(
+    () =>
+      montarDadosRelatorio({
+        mes,
+        linhas: recorte,
+        correspondente: alvo === "Todos" ? null : alvo,
+        hist,
+        alertas,
+        medidas,
+      }),
+    [mes, recorte, alvo, hist, alertas, medidas],
+  );
+  const previa = useMemo(() => relatorioHtml(dados), [dados]);
   const nC = alertas.filter((a) => a.severidade === "critico").length;
   const nA = alertas.filter((a) => a.severidade === "atencao").length;
   const nI = alertas.filter((a) => a.severidade === "info").length;
@@ -79,56 +123,99 @@ export function AlertasRelatorios({
         }))}
       />
       <h2 className="text-xl font-semibold">Relatório mensal</h2>
-      <label className="block text-sm">
-        Escopo do relatório
-        <select
-          className="mt-1 w-full max-w-md rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
-          value={alvo}
-          onChange={(e) => setAlvo(e.target.value)}
-        >
-          {nomes.map((n) => (
-            <option key={n}>{n}</option>
-          ))}
-        </select>
-      </label>
-      <label className="block text-sm">
-        Enviar para
-        <input
-          className="mt-1 w-full max-w-md rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
-          value={dest}
-          onChange={(e) => setDest(e.target.value)}
-        />
-      </label>
-      <div className="flex flex-wrap gap-2">
-        <a
-          className="btn-primary inline-block"
-          href={`data:text/markdown;charset=utf-8,${encodeURIComponent(corpo)}`}
-          download={`relatorio_qualidade_${mes.slice(0, 7)}.md`}
-        >
-          Baixar relatório (.md)
-        </a>
-        {ehStaff ? (
-          <form
-            action={async (fd) => {
-              fd.set("mes", mes);
-              fd.set("destinatario", dest);
-              fd.set("correspondente", alvo === "Todos" ? "" : alvo);
-              const r = await registrarRelatorio(fd);
-              setMsg(r.erro || "Registrado.");
-            }}
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="block text-sm">
+          Escopo do relatório
+          <select
+            className="mt-1 w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
+            value={alvo}
+            onChange={(e) => setAlvo(e.target.value)}
           >
-            <button className="btn-primary" type="submit">
-              Registrar envio
-            </button>
-          </form>
-        ) : null}
+            {nomes.length > 1 ? <option value="Todos">Todos</option> : null}
+            {nomes.map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block text-sm">
+          Destinatário (registro automático)
+          <input
+            className="mt-1 w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
+            value={dest}
+            onChange={(e) => setDest(e.target.value)}
+          />
+        </label>
       </div>
+      <fieldset className="text-sm">
+        <legend className="mb-2 font-medium">Formato do arquivo</legend>
+        <div className="flex flex-wrap gap-3">
+          {(
+            [
+              ["html", "HTML"],
+              ["md", "Markdown (.md)"],
+              ["pdf", "PDF"],
+            ] as const
+          ).map(([id, rotulo]) => (
+            <label
+              key={id}
+              className={`cursor-pointer rounded-[var(--radius-form)] border px-3 py-2 ${
+                formato === id
+                  ? "border-[var(--senff-acqua)] bg-[#e8f7fb] font-semibold"
+                  : "border-[var(--border)] bg-white"
+              }`}
+            >
+              <input
+                type="radio"
+                name="formato"
+                className="mr-2 accent-[var(--senff-acqua)]"
+                checked={formato === id}
+                onChange={() => setFormato(id)}
+              />
+              {rotulo}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+      <button
+        className="btn-primary"
+        type="button"
+        disabled={pendente}
+        onClick={() => {
+          start(async () => {
+            const fd = new FormData();
+            fd.set("mes", mes);
+            fd.set("destinatario", dest);
+            fd.set("correspondente", alvo === "Todos" ? "" : alvo);
+            fd.set("formato", formato);
+            const r = await gerarERegistrarRelatorio(fd);
+            if (!r.ok) {
+              setMsg(r.erro);
+              return;
+            }
+            baixarArquivo(r.filename, r.mime, r.texto, r.base64);
+            setMsg(
+              r.registrado
+                ? "Relatório gerado. Envio registrado automaticamente."
+                : "Relatório gerado.",
+            );
+          });
+        }}
+      >
+        {pendente ? "Gerando…" : "Gerar relatório"}
+      </button>
       {msg ? <p className="text-sm">{msg}</p> : null}
-      <details className="rounded-[var(--radius-box)] border border-[var(--border)] bg-white p-3">
-        <summary className="cursor-pointer font-medium">Prévia do relatório</summary>
-        <pre className="mt-2 overflow-auto whitespace-pre-wrap text-xs">{corpo}</pre>
-      </details>
-      <p className="text-xs text-[var(--senff-grey)]">Assunto: {assunto}</p>
+      <div className="overflow-hidden rounded-[var(--radius-box)] border border-[var(--border)] bg-white">
+        <p className="border-b border-[var(--border)] px-3 py-2 text-sm font-medium">
+          Prévia no padrão do relatório
+        </p>
+        <iframe
+          title="Prévia do relatório mensal"
+          className="h-[min(80vh,900px)] w-full bg-white"
+          srcDoc={previa}
+        />
+      </div>
       {ehStaff ? (
         <>
           <h2 className="text-xl font-semibold">Histórico de envios</h2>
