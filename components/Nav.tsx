@@ -9,6 +9,7 @@ export const NAV = [
   { href: "/correspondente", label: "Por correspondente" },
   { href: "/evolucao", label: "Evolução" },
   { href: "/relatoria", label: "Relatoria" },
+  { href: "/monitoramento-anual", label: "Monitoramento anual" },
   { href: "/relacionamento", label: "Relacionamento" },
   { href: "/fechamento", label: "Fechamento mensal" },
   { href: "/auditorias", label: "Auditorias" },

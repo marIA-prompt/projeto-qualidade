@@ -36,7 +36,7 @@ export function FormAuditoria({
       <h2 className="text-xl font-semibold">Registrar resultado de auditoria</h2>
       <p className="text-sm text-[var(--senff-navy-text)]">
         Entrada manual por pilar (FR-3). A pontuação é a média dos subcritérios (ok=100, parcial=50,
-        não ok=0). Isso ainda não dispara o Quadro 3 anual.
+        não ok=0). Entra na pontuação qualitativa do monitoramento anual.
       </p>
       <label className="block text-sm">
         Tipo

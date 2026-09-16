@@ -13,6 +13,8 @@ export function fmtIndice(v: number | null | undefined): string {
 
 export const ROTULOS_STATUS: Record<string, string> = {
   conforme: "Conforme",
+  parcialmente_conforme: "Parcialmente conforme",
+  em_atencao: "Em atenção",
   nao_conforme: "Não conforme",
   nao_aplicavel: "Não aplicável",
 };
