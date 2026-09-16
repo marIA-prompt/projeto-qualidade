@@ -2,11 +2,19 @@
 
 import { revalidatePath } from "next/cache";
 import { logConfirmacao, payloadConfirmacao } from "@/lib/indefinidos";
-import { carregarPerfil, reclassificarMes, carregarClassificacoes } from "@/lib/dados";
+import { alertasDoMes, carregarPerfil, carregarClassificacoes, reclassificarMes, resumoAuditorias } from "@/lib/dados";
 import { pontuacaoPilar } from "@/lib/pilares";
 import { chaveAcompanhamentoValida } from "@/lib/filtros";
+import {
+  assuntoRelatorio,
+  montarDadosRelatorio,
+  nomeArquivoRelatorio,
+  relatorioHtml,
+  relatorioMarkdown,
+  type MedidaHistorico,
+} from "@/lib/relatorioModelo";
+import { relatorioPdf } from "@/lib/relatorioPdf";
 import { createClient } from "@/lib/supabase/server";
-import { montarRelatorioMensal } from "@/lib/relatorios";
 import { mesIso } from "@/lib/format";
 
 async function exigirStaff() {
@@ -121,42 +129,84 @@ export async function registrarMedida(formData: FormData) {
   return { ok: true, erro: null };
 }
 
-export async function registrarRelatorio(formData: FormData) {
-  await exigirStaff();
-  const mes = String(formData.get("mes") || "");
-  const destinatario = String(formData.get("destinatario") || "");
+export async function gerarERegistrarRelatorio(formData: FormData) {
+  const { userId, perfil } = await carregarPerfil();
+  const mes = mesIso(formData.get("mes"));
+  const destinatario = String(formData.get("destinatario") || "").trim() || "maria.morais@senff.com.br";
   const correspondente = String(formData.get("correspondente") || "") || null;
+  const formato = String(formData.get("formato") || "html");
+  if (!["html", "md", "pdf"].includes(formato)) {
+    return { ok: false, erro: "Formato inválido.", filename: "", mime: "", texto: null, base64: null, registrado: false };
+  }
   const hist = await carregarClassificacoes();
-  const df = hist.filter((r) => r.mes_referencia === mesIso(mes));
-  const recorte = correspondente ? df.filter((r) => r.correspondente === correspondente) : df;
-  const { assunto, corpo } = montarRelatorioMensal({
+  const dfMes = hist.filter((r) => r.mes_referencia === mes);
+  const recorte = correspondente ? dfMes.filter((r) => r.correspondente === correspondente) : dfMes;
+  const resumo = await resumoAuditorias();
+  const alertas = alertasDoMes(dfMes, resumo, mes);
+  const sb = await createClient();
+  const { data: aplicadas } = await sb
+    .from("medidas_aplicadas")
+    .select("data_aplicacao, motivo, correspondente_id, correspondentes(nome), medidas_administrativas(nivel, descricao, codigo)")
+    .order("data_aplicacao", { ascending: false });
+  const medidas: MedidaHistorico[] = (aplicadas || []).map((m) => {
+    const corr = m.correspondentes as { nome?: string } | null;
+    const med = m.medidas_administrativas as { nivel?: number; descricao?: string; codigo?: string } | null;
+    const tipo = med?.nivel ? `Nível ${med.nivel}` : med?.codigo || "Medida";
+    const descricao = med?.descricao || m.motivo || "Medida registrada";
+    return {
+      correspondente_id: m.correspondente_id,
+      correspondente: corr?.nome,
+      data_aplicacao: m.data_aplicacao,
+      tipo,
+      descricao: m.motivo ? `${descricao} (${m.motivo})` : descricao,
+    };
+  });
+  const dados = montarDadosRelatorio({
     mes,
     linhas: recorte,
     correspondente,
+    hist,
+    alertas,
+    medidas,
   });
-  const sb = await createClient();
-  const { userId } = await carregarPerfil();
-  const smtpOk = Boolean(process.env.SMTP_HOST && process.env.SMTP_USUARIO);
-  await sb.from("relatorios_mensais").insert({
-    mes_referencia: mesIso(mes),
-    destinatario,
-    assunto,
-    corpo,
-    status: smtpOk ? "enviado" : "falhou",
-    erro: smtpOk
-      ? null
-      : "SMTP ainda não configurado na Vercel (SMTP_HOST / SMTP_USUARIO / SMTP_SENHA). O relatório foi gerado para download.",
-    enviado_por: userId,
-  });
-  revalidatePath("/relatoria");
-  return {
-    ok: smtpOk,
-    assunto,
-    corpo,
-    erro: smtpOk
-      ? null
-      : "SMTP ainda não configurado. Baixe o relatório; o envio liga quando SMTP_* estiver no projeto Vercel.",
-  };
+  const assunto = assuntoRelatorio(dados);
+  const md = relatorioMarkdown(dados);
+  let texto: string | null = null;
+  let base64: string | null = null;
+  let mime = "text/html;charset=utf-8";
+  let filename = nomeArquivoRelatorio(dados, "html");
+  if (formato === "md") {
+    texto = md;
+    mime = "text/markdown;charset=utf-8";
+    filename = nomeArquivoRelatorio(dados, "md");
+  } else if (formato === "pdf") {
+    const bytes = await relatorioPdf(dados);
+    base64 = Buffer.from(bytes).toString("base64");
+    mime = "application/pdf";
+    filename = nomeArquivoRelatorio(dados, "pdf");
+  } else {
+    texto = relatorioHtml(dados);
+  }
+
+  let registrado = false;
+  if (perfil?.role === "staff") {
+    const { error } = await sb.from("relatorios_mensais").insert({
+      mes_referencia: mes,
+      destinatario,
+      assunto,
+      corpo: md,
+      status: "gerado",
+      erro: null,
+      enviado_por: userId,
+    });
+    if (error) {
+      return { ok: false, erro: error.message, filename: "", mime: "", texto: null, base64: null, registrado: false };
+    }
+    registrado = true;
+    revalidatePath("/relatoria");
+  }
+
+  return { ok: true, erro: null, filename, mime, texto, base64, registrado };
 }
 
 export async function registrarAcompanhamento(formData: FormData) {
