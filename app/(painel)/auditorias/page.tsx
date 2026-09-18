@@ -1,6 +1,7 @@
 import { FormAuditoria } from "@/components/FormAuditoria";
-import { Tabela } from "@/components/ui";
+import { ListaAuditorias, type LinhaAuditoria } from "@/components/ListaAuditorias";
 import { carregarPerfil } from "@/lib/dados";
+import { caminhoAnexoAuditoria } from "@/lib/auditoriaAnexo";
 import { PILARES } from "@/lib/pilares";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,25 +9,33 @@ export default async function Page() {
   const { perfil } = await carregarPerfil();
   const sb = await createClient();
   const { data: cors } = await sb.from("correspondentes").select("id, nome, cnpj").order("nome");
-  const blocos: Record<string, unknown>[] = [];
+  const blocos: LinhaAuditoria[] = [];
   for (const [rotulo, tabela] of [
     ["Auditoria externa", "auditorias_externas"],
     ["Auditoria interna", "auditorias_internas"],
   ] as const) {
     const { data } = await sb
       .from(tabela)
-      .select("data_avaliacao, pilar, pontuacao, observacoes, correspondentes(nome)")
+      .select("id, data_avaliacao, pilar, pontuacao, observacoes, correspondentes(nome)")
       .order("data_avaliacao", { ascending: false })
-      .limit(15);
+      .limit(50);
     for (const r of data || []) {
       const corr = r.correspondentes as { nome?: string } | null;
+      const obs = r.observacoes || "";
+      const semAnexo = obs
+        .replace(/^Anexo PDF:\s+\S+\n?/m, "")
+        .replace(/^Anexo PDF \(não enviado ao storage\):.*$/m, "")
+        .trim();
       blocos.push({
+        id: r.id,
+        tabela,
         Tipo: rotulo,
         Data: r.data_avaliacao,
         Correspondente: corr?.nome || "—",
         Pilar: PILARES[r.pilar] || r.pilar,
         Pontuação: r.pontuacao ?? "—",
-        Observações: r.observacoes || "—",
+        Observações: semAnexo || "—",
+        Anexo: caminhoAnexoAuditoria(obs) ? "PDF" : "—",
       });
     }
   }
@@ -41,17 +50,7 @@ export default async function Page() {
       )}
       <h3 className="font-semibold">Últimos registros</h3>
       {blocos.length ? (
-        <Tabela
-          colunas={[
-            { chave: "Tipo", titulo: "Tipo" },
-            { chave: "Data", titulo: "Data" },
-            { chave: "Correspondente", titulo: "Correspondente" },
-            { chave: "Pilar", titulo: "Pilar" },
-            { chave: "Pontuação", titulo: "Pontuação" },
-            { chave: "Observações", titulo: "Observações" },
-          ]}
-          linhas={blocos}
-        />
+        <ListaAuditorias linhas={blocos} ehStaff={perfil?.role === "staff"} />
       ) : (
         <p className="text-sm">Nenhuma auditoria registrada ainda.</p>
       )}

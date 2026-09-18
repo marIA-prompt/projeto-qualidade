@@ -24,6 +24,12 @@ import {
   relatorioMarkdownAnual,
 } from "@/lib/relatorioAnual";
 import { relatorioPdfAnual } from "@/lib/relatorioAnualPdf";
+import {
+  caminhoAnexoAuditoria,
+  caminhoUploadAuditoria,
+  pdfAuditoriaValido,
+  tabelaAuditoriaValida,
+} from "@/lib/auditoriaAnexo";
 import { createClient } from "@/lib/supabase/server";
 import { mesIso } from "@/lib/format";
 
@@ -70,52 +76,99 @@ export async function confirmarIndefinido(formData: FormData) {
 }
 
 export async function registrarAuditoria(formData: FormData) {
-  await exigirStaff();
-  const tipo = String(formData.get("tipo") || "");
-  const correspondente_id = String(formData.get("correspondente_id") || "");
-  const pilar = String(formData.get("pilar") || "");
-  const data_avaliacao = String(formData.get("data_avaliacao") || "");
-  const observacoesBase = String(formData.get("observacoes") || "") || null;
-  const tabela = tipo === "interna" ? "auditorias_internas" : "auditorias_externas";
-  const subcriterios: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) {
-    if (k.startsWith("sub_")) subcriterios[k.slice(4)] = String(v);
-  }
-  let observacoes = observacoesBase;
-  const anexo = formData.get("anexo");
-  if (anexo instanceof File && anexo.size > 0) {
-    const nome = anexo.name.toLowerCase();
-    if (anexo.type !== "application/pdf" && !nome.endsWith(".pdf")) {
-      return { ok: false, erro: "O anexo da auditoria deve ser PDF." };
+  try {
+    await exigirStaff();
+    const tipo = String(formData.get("tipo") || "");
+    const correspondente_id = String(formData.get("correspondente_id") || "");
+    const pilar = String(formData.get("pilar") || "");
+    const data_avaliacao = String(formData.get("data_avaliacao") || "");
+    const observacoesBase = String(formData.get("observacoes") || "") || null;
+    const tabela = tipo === "interna" ? "auditorias_internas" : "auditorias_externas";
+    if (!tabelaAuditoriaValida(tabela)) {
+      return { ok: false, erro: "Tipo de auditoria inválido." };
     }
-    const sbUp = await createClient();
-    const seguro = anexo.name.replace(/[^\w.\-]+/g, "_");
-    const path = `${tabela}/${correspondente_id}/${data_avaliacao}-${seguro}`;
-    const { error: upErr } = await sbUp.storage.from("auditorias").upload(path, anexo, {
-      contentType: "application/pdf",
-      upsert: true,
+    const subcriterios: Record<string, string> = {};
+    for (const [k, v] of formData.entries()) {
+      if (k.startsWith("sub_")) subcriterios[k.slice(4)] = String(v);
+    }
+    let observacoes = observacoesBase;
+    const anexo = formData.get("anexo");
+    if (anexo instanceof File && anexo.size > 0) {
+      const rejeicao = pdfAuditoriaValido(anexo);
+      if (rejeicao) return { ok: false, erro: rejeicao };
+      const sbUp = await createClient();
+      const path = caminhoUploadAuditoria({
+        tabela,
+        correspondenteId: correspondente_id,
+        dataAvaliacao: data_avaliacao,
+        nomeArquivo: anexo.name,
+      });
+      try {
+        const bytes = new Uint8Array(await anexo.arrayBuffer());
+        const { error: upErr } = await sbUp.storage.from("auditorias").upload(path, bytes, {
+          contentType: "application/pdf",
+          upsert: false,
+        });
+        if (upErr) {
+          return {
+            ok: false,
+            erro: `Não foi possível enviar o PDF (${upErr.message}). A auditoria não foi gravada.`,
+          };
+        }
+        observacoes = [observacoes, `Anexo PDF: ${path}`].filter(Boolean).join("\n");
+      } catch (e) {
+        const detalhe = e instanceof Error ? e.message : "falha desconhecida";
+        return {
+          ok: false,
+          erro: `Não foi possível enviar o PDF (${detalhe}). A auditoria não foi gravada.`,
+        };
+      }
+    }
+    const sb = await createClient();
+    const { error } = await sb.from(tabela).insert({
+      correspondente_id,
+      pilar,
+      pontuacao: pontuacaoPilar(subcriterios),
+      subcriterios,
+      data_avaliacao,
+      observacoes,
     });
-    observacoes = [observacoes, upErr ? `Anexo PDF (não enviado ao storage): ${anexo.name}` : `Anexo PDF: ${path}`]
-      .filter(Boolean)
-      .join("\n");
-    if (upErr) {
-      observacoes = `${observacoes}\n(Storage: ${upErr.message}. Crie o bucket 'auditorias' no Supabase se ainda não existir.)`;
-    }
+    if (error) return { ok: false, erro: error.message };
+    revalidatePath("/auditorias");
+    revalidatePath("/monitoramento-anual");
+    revalidatePath("/");
+    return { ok: true, erro: null };
+  } catch (e) {
+    const detalhe = e instanceof Error ? e.message : "falha desconhecida";
+    return { ok: false, erro: detalhe };
   }
-  const sb = await createClient();
-  const { error } = await sb.from(tabela).insert({
-    correspondente_id,
-    pilar,
-    pontuacao: pontuacaoPilar(subcriterios),
-    subcriterios,
-    data_avaliacao,
-    observacoes,
-  });
-  if (error) return { ok: false, erro: error.message };
-  revalidatePath("/auditorias");
-  revalidatePath("/monitoramento-anual");
-  revalidatePath("/");
-  return { ok: true, erro: null };
+}
+
+export async function excluirAuditoria(formData: FormData) {
+  try {
+    await exigirStaff();
+    const id = String(formData.get("id") || "");
+    const tabela = String(formData.get("tabela") || "");
+    if (!id) return { ok: false, erro: "Registro inválido." };
+    if (!tabelaAuditoriaValida(tabela)) return { ok: false, erro: "Tipo de auditoria inválido." };
+    const sb = await createClient();
+    const { data: atual, error: getErr } = await sb.from(tabela).select("id, observacoes").eq("id", id).maybeSingle();
+    if (getErr) return { ok: false, erro: getErr.message };
+    if (!atual) return { ok: false, erro: "Registro não encontrado." };
+    const anexo = caminhoAnexoAuditoria(atual.observacoes);
+    const { error } = await sb.from(tabela).delete().eq("id", id);
+    if (error) return { ok: false, erro: error.message };
+    if (anexo) {
+      await sb.storage.from("auditorias").remove([anexo]);
+    }
+    revalidatePath("/auditorias");
+    revalidatePath("/monitoramento-anual");
+    revalidatePath("/");
+    return { ok: true, erro: null };
+  } catch (e) {
+    const detalhe = e instanceof Error ? e.message : "falha desconhecida";
+    return { ok: false, erro: detalhe };
+  }
 }
 
 export async function registrarMedida(formData: FormData) {
