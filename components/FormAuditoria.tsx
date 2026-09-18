@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { registrarAuditoria } from "@/app/actions";
+import { pdfAuditoriaValido } from "@/lib/auditoriaAnexo";
 import { PILARES, ROTULOS_NOTA, SUBCRITERIOS, pontuacaoPilar } from "@/lib/pilares";
 
 export function FormAuditoria({
@@ -17,11 +19,19 @@ export function FormAuditoria({
   const [arquivo, setArquivo] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const pontuacao = useMemo(() => pontuacaoPilar(notas), [notas]);
+  const router = useRouter();
 
   return (
     <form
       className="space-y-3 rounded-[var(--radius-box)] border border-[var(--border)] bg-white p-4"
       action={async (fd) => {
+        if (arquivo) {
+          const rejeicao = pdfAuditoriaValido(arquivo);
+          if (rejeicao) {
+            setMsg(rejeicao);
+            return;
+          }
+        }
         fd.set("tipo", tipo);
         fd.set("pilar", pilar);
         for (const [k, v] of Object.entries(notas)) fd.set(`sub_${k}`, v);
@@ -30,6 +40,7 @@ export function FormAuditoria({
         if (r.ok) {
           setArquivo(null);
           if (inputRef.current) inputRef.current.value = "";
+          router.refresh();
         }
       }}
     >
@@ -123,7 +134,19 @@ export function FormAuditoria({
         name="anexo"
         accept="application/pdf,.pdf"
         className="sr-only"
-        onChange={(e) => setArquivo(e.target.files?.[0] || null)}
+        onChange={(e) => {
+          const f = e.target.files?.[0] || null;
+          if (f) {
+            const rejeicao = pdfAuditoriaValido(f);
+            if (rejeicao) {
+              setMsg(rejeicao);
+              setArquivo(null);
+              e.target.value = "";
+              return;
+            }
+          }
+          setArquivo(f);
+        }}
       />
       <button
         type="button"
