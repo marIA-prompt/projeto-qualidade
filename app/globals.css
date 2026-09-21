@@ -44,6 +44,7 @@ body {
 .chip-ok { background: #e6faf4; color: #0a6b5c; }
 .chip-danger { background: #fdecef; color: #9b1c3a; }
 .chip-off { background: #f3f5f7; color: #82929b; }
+.chip-warn { background: #FBF3DF; color: #8A6410; }
 
 .btn-primary {
   background: var(--senff-acqua);
