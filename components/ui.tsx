@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { BotaoSair } from "./BotaoSair";
 import { FiltrosPainel } from "./FiltrosPainel";
 import { Nav } from "./Nav";
+import { SeletorProduto } from "./SeletorProduto";
 import type { CorrespondenteOpcao } from "@/lib/filtros";
 
 export function Shell(props: {
@@ -20,9 +21,12 @@ export function Shell(props: {
         </div>
         <p className="text-sm font-semibold">Qualidade de Correspondentes</p>
         <p className="mt-1 truncate text-xs text-white/75">{props.email}</p>
-        <p className="mb-6 text-xs text-white/60">
+        <p className="mb-4 text-xs text-white/60">
           {props.papel === "staff" ? "Qualidade/Compliance" : "Correspondente"}
         </p>
+        <Suspense>
+          <SeletorProduto />
+        </Suspense>
         <Suspense>
           <Nav />
         </Suspense>
@@ -46,6 +50,9 @@ export function Shell(props: {
           </div>
         </header>
         <div className="border-b border-[var(--border)] bg-white px-6 py-3 md:hidden">
+          <Suspense>
+            <SeletorProduto compact />
+          </Suspense>
           <Suspense>
             <Nav compact />
           </Suspense>
@@ -89,11 +96,21 @@ export function Chip({ status }: { status: string }) {
     conforme: "chip-ok",
     nao_conforme: "chip-danger",
     nao_aplicavel: "chip-off",
+    temporaria: "chip-warn",
+    definitiva: "chip-danger",
+    baixo: "chip-ok",
+    moderado: "chip-warn",
+    alto: "chip-danger",
   };
   const rotulo: Record<string, string> = {
     conforme: "Conforme",
     nao_conforme: "Não conforme",
     nao_aplicavel: "Não aplicável",
+    temporaria: "Suspensão temporária",
+    definitiva: "Suspensão definitiva",
+    baixo: "Baixo",
+    moderado: "Moderado",
+    alto: "Alto",
   };
   return <span className={`chip ${map[status] || "chip-off"}`}>{rotulo[status] || status}</span>;
 }

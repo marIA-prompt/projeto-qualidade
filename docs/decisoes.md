@@ -109,3 +109,22 @@ encaminhamentos a Fraudes bateram 100%.
     conforme ou Conforme zeram o ciclo. Dump navigate mar–set/2026 carregado
     por `etl/carregar_periodo.py`; agosto/2026 **não** foi regravado (fechamento
     oficial já validado).
+
+## 12. Hub visual de Agentes de Crédito (21/09/2026)
+
+Mesmo painel Next, **sem fundir schemas**. Seletor no sidebar:
+Correspondentes (CNPJ, Quadro 5) | Agentes (CPF, Quadro 6 / MCB / arquivo 104).
+
+- Telas em `/agentes/*` leem `dados/preview/snapshot.json` (padrão Navigate
+  agregado por CPF). **Não** consultam tabelas de correspondente.
+- Motor em `motor_agentes/` — teto ≤ 0,75% conforme; corte ops > 50 **e** rec > 1;
+  sem carteira → `nao_aplicavel`. MCB 5/20/12. Arquivo 104 separado.
+- Relatório individual e consulta §7º ocultam o bloco 104 se o CPF não estiver
+  no arquivo. Menu Fraude 104 permanece.
+- CPF de cliente fora da UI. CPF do agente mascarado (`***.***.***-99`);
+  completo só na ficha staff (`/agentes/agente`).
+- Auditoria de agente grava em `dados/preview/auditorias.json`, não no schema
+  de CNPJ. Não alterar o fechamento ago/2026 de correspondentes.
+- Não rodar `CREATE TABLE` do produto de digitadores no Supabase
+  `qzmssnbrmsokppgevxrr`.
+

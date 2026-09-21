@@ -7,8 +7,10 @@
 # Nunca versionar: usar apenas localmente para rodar o ETL.
 exportacao_*.csv
 agregado_mensal_*.csv
+arquivo_104*.csv
 saida_etl/
 saida/
+dados/preview/auditorias.json
 
 # Python
 __pycache__/
