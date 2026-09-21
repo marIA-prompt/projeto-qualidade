@@ -7,13 +7,7 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from pilares import (
-    PILARES,
-    ROTULOS_NOTA,
-    SUBCRITERIOS,
-    TIPOS_AUDITORIA,
-    pontuacao_pilar,
-)
+from pilares import PILARES, TIPOS_AUDITORIA, formatar_pontuacao, parse_pontuacao_manual
 
 
 def _rotulo_corr(c: dict) -> str:
@@ -69,9 +63,9 @@ def resumo_auditorias(sb) -> pd.DataFrame:
 def formulario_auditoria(sb) -> None:
     st.subheader("Registrar resultado de auditoria")
     st.caption(
-        "Entrada manual por pilar (FR-3). A pontuação do pilar é a média dos "
-        "subcritérios avaliados (ok=100, parcial=50, não ok=0). Isso ainda "
-        "não dispara a classificação anual do Quadro 3."
+        "Fiel ao relatório oficial: os 5 pilares, as observações da EY e a "
+        "pontuação final digitada (ex.: 92%). Sem subcritérios e sem média "
+        "automática. A nota entra na pontuação qualitativa do monitoramento anual."
     )
     correspondentes = (
         sb.table("correspondentes").select("id, nome, cnpj").order("nome").execute().data
@@ -98,34 +92,35 @@ def formulario_auditoria(sb) -> None:
         format_func=lambda k: PILARES[k],
         key="aud_pilar",
     )
+    st.caption("Critério geral do relatório — somente os 5 pilares, sem detalhar subcritério.")
     data_av = st.date_input("Data da avaliação", value=date.today(), key="aud_data")
 
-    st.markdown("**Subcritérios**")
-    subcriterios: dict[str, str] = {}
-    opcoes = list(ROTULOS_NOTA.keys())
-    for chave, rotulo in SUBCRITERIOS[pilar_chave].items():
-        subcriterios[chave] = st.radio(
-            rotulo,
-            opcoes,
-            format_func=lambda v: ROTULOS_NOTA[v],
-            horizontal=True,
-            key=f"sub_{pilar_chave}_{chave}",
-            index=3,  # nao_avaliado
-        )
-    pontuacao = pontuacao_pilar(subcriterios)
-    if pontuacao is None:
-        st.info("Nenhum subcritério avaliado — a pontuação do pilar ficará em branco.")
-    else:
-        st.metric("Pontuação do pilar", f"{pontuacao:.0f}")
-
-    observacoes = st.text_area("Observações (auditável)")
+    observacoes = st.text_area(
+        "Observações da EY — Auditoria",
+        placeholder="Cole aqui as informações e achados do relatório oficial",
+        key="aud_obs",
+    )
+    pontuacao_txt = st.text_input(
+        "Pontuação da auditoria (%)",
+        placeholder="Ex.: 92",
+        key="aud_pontuacao",
+    )
+    st.caption(
+        "Digite o percentual do relatório (pontuação final). Não calculamos a partir de subcritérios."
+    )
     if st.button("Gravar auditoria", type="primary"):
+        try:
+            pontuacao = parse_pontuacao_manual(pontuacao_txt)
+        except ValueError as exc:
+            st.error(str(exc))
+            _historico(sb)
+            return
         tabela = TIPOS_AUDITORIA[tipo_chave][0]
         sb.table(tabela).insert({
             "correspondente_id": corr["id"],
             "pilar": pilar_chave,
             "pontuacao": pontuacao,
-            "subcriterios": subcriterios,
+            "subcriterios": {},
             "data_avaliacao": data_av.isoformat(),
             "observacoes": observacoes or None,
         }).execute()
@@ -155,7 +150,7 @@ def _historico(sb) -> None:
                 "Data": r["data_avaliacao"],
                 "Correspondente": (r.get("correspondentes") or {}).get("nome") or "—",
                 "Pilar": PILARES.get(r["pilar"], r["pilar"]),
-                "Pontuação": r["pontuacao"] if r["pontuacao"] is not None else "—",
+                "Pontuação": formatar_pontuacao(r["pontuacao"]),
                 "Observações": r.get("observacoes") or "—",
             })
     if not blocos:

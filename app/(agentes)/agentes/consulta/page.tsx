@@ -4,7 +4,7 @@ import { carregarAuditoriasAgente } from "@/lib/agentes/auditorias";
 import { contextoAgentes } from "@/lib/agentes/contexto";
 import { queryPainel } from "@/lib/agentes/filtros";
 import { fmtIndice } from "@/lib/agentes/format";
-import { PILARES } from "@/lib/pilares";
+import { formatarPontuacao, PILARES } from "@/lib/pilares";
 
 export default async function ConsultaAgentePage({
   searchParams,
@@ -68,7 +68,7 @@ export default async function ConsultaAgentePage({
               Tipo: a.tipo === "interna" ? "Auditoria interna" : "Auditoria externa",
               Data: a.data_avaliacao,
               Pilar: PILARES[a.pilar] || a.pilar,
-              Pontuação: a.pontuacao ?? "—",
+              Pontuação: formatarPontuacao(a.pontuacao),
             }))}
           />
         </>

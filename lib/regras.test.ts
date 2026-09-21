@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { classificarMensal, eProcedenteCorban, eEmAndamento, LIMITE_INDICE_QUADRO5 } from "./motor.ts";
 import { sufixoConfirmacao } from "./indefinidos.ts";
-import { pontuacaoPilar } from "./pilares.ts";
 
 test("conforme 0,02%", () => {
   const r = classificarMensal({
@@ -49,8 +48,4 @@ test("em andamento só sem classificação final", () => {
   assert.equal(eEmAndamento("indefinido", "Improcedente"), false);
   assert.equal(eEmAndamento("indefinido", "Procedente"), false);
   assert.equal(eEmAndamento("corban", "Improcedente - Corban"), false);
-});
-
-test("média do pilar ignora nao_avaliado", () => {
-  assert.equal(pontuacaoPilar({ a: "ok", b: "nao_ok", c: "nao_avaliado" }), 50);
 });
