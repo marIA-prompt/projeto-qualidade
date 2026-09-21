@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { carregarPerfil } from "@/lib/dados";
 import { carregarSnapshot } from "@/lib/agentes/snapshot";
 import { gravarAuditoriaAgente } from "@/lib/agentes/auditorias";
-import { pontuacaoPilar } from "@/lib/pilares";
+import { parsePontuacaoManual, PILARES } from "@/lib/pilares";
 
 export async function registrarAuditoriaAgente(
   formData: FormData,
@@ -18,10 +18,12 @@ export async function registrarAuditoriaAgente(
   if (!/^\d{11}$/.test(cpf)) {
     return { ok: false, erro: "Selecione um agente com CPF válido." };
   }
-  const subcriterios: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) {
-    if (String(k).startsWith("sub_")) subcriterios[String(k).slice(4)] = String(v);
+  const pilar = String(formData.get("pilar") || "");
+  if (!(pilar in PILARES)) {
+    return { ok: false, erro: "Selecione um dos 5 pilares do relatório." };
   }
+  const pontuacaoParse = parsePontuacaoManual(formData.get("pontuacao"));
+  if (!pontuacaoParse.ok) return { ok: false, erro: pontuacaoParse.erro };
   const snap = carregarSnapshot();
   const agente = snap.classificacoes.find((c) => c.cpf_agente === cpf);
   const anexo = formData.get("anexo");
@@ -31,9 +33,9 @@ export async function registrarAuditoriaAgente(
     cpf_agente: cpf,
     nome_agente: agente?.nome_agente || null,
     tipo: formData.get("tipo") === "interna" ? "interna" : "externa",
-    pilar: String(formData.get("pilar") || "relacionamento_cliente"),
-    pontuacao: pontuacaoPilar(subcriterios),
-    subcriterios,
+    pilar,
+    pontuacao: pontuacaoParse.valor,
+    subcriterios: {},
     data_avaliacao: String(formData.get("data_avaliacao") || ""),
     observacoes: String(formData.get("observacoes") || "").trim(),
     anexo_nome: anexoNome,
