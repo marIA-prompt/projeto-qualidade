@@ -2,7 +2,7 @@ import { FormAuditoria } from "@/components/FormAuditoria";
 import { ListaAuditorias, type LinhaAuditoria } from "@/components/ListaAuditorias";
 import { carregarPerfil } from "@/lib/dados";
 import { caminhoAnexoAuditoria } from "@/lib/auditoriaAnexo";
-import { PILARES } from "@/lib/pilares";
+import { formatarPontuacao, PILARES } from "@/lib/pilares";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Page() {
@@ -33,7 +33,7 @@ export default async function Page() {
         Data: r.data_avaliacao,
         Correspondente: corr?.nome || "—",
         Pilar: PILARES[r.pilar] || r.pilar,
-        Pontuação: r.pontuacao ?? "—",
+        Pontuação: formatarPontuacao(r.pontuacao),
         Observações: semAnexo || "—",
         Anexo: caminhoAnexoAuditoria(obs) ? "PDF" : "—",
       });

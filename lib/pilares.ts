@@ -1,9 +1,9 @@
 export const PILARES: Record<string, string> = {
-  tecnologia_informacao: "Tecnologia da Informação",
-  lgpd: "LGPD",
-  relacionamento_cliente: "Relacionamento com Cliente",
+  lgpd: "Adequação à LGPD",
+  treinamento: "Aprendizado e Conhecimento",
   governanca: "Políticas de Governança",
-  treinamento: "Treinamento e Aprendizagem",
+  relacionamento_cliente: "Relacionamento com Cliente",
+  tecnologia_informacao: "Tecnologia da Informação",
 };
 
 export const SUBCRITERIOS: Record<string, Record<string, string>> = {
@@ -62,4 +62,30 @@ export function pontuacaoPilar(subcriterios: Record<string, string>): number | n
     .map((v) => NOTAS[v]);
   if (!notas.length) return null;
   return Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 100) / 100;
+}
+
+/** Percentual do relatório oficial (0–100). Vazio = sem nota. Não calcula média. */
+export function parsePontuacaoManual(
+  bruto: unknown,
+): { ok: true; valor: number | null } | { ok: false; erro: string } {
+  const raw = String(bruto ?? "")
+    .trim()
+    .replace("%", "")
+    .replace(",", ".");
+  if (!raw) return { ok: true, valor: null };
+  const n = Number(raw);
+  if (!Number.isFinite(n)) {
+    return { ok: false, erro: "Informe a pontuação da auditoria (0 a 100)." };
+  }
+  if (n < 0 || n > 100) {
+    return { ok: false, erro: "A pontuação da auditoria deve estar entre 0 e 100." };
+  }
+  return { ok: true, valor: Math.round(n * 100) / 100 };
+}
+
+export function formatarPontuacao(valor: number | string | null | undefined): string {
+  if (valor == null || valor === "") return "—";
+  const n = typeof valor === "number" ? valor : Number(String(valor).replace(",", "."));
+  if (!Number.isFinite(n)) return "—";
+  return `${n}%`;
 }

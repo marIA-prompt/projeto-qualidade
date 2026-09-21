@@ -5,7 +5,7 @@ import { logConfirmacao, payloadConfirmacao } from "@/lib/indefinidos";
 import { alertasDoMes, carregarPerfil, carregarClassificacoes, reclassificarMes, resumoAuditorias } from "@/lib/dados";
 import { carregarClassificacoesAnuais } from "@/lib/anual";
 import { classificarAnual } from "@/lib/motorAnual";
-import { pontuacaoPilar } from "@/lib/pilares";
+import { parsePontuacaoManual, PILARES } from "@/lib/pilares";
 import { chaveAcompanhamentoValida } from "@/lib/filtros";
 import {
   assuntoRelatorio,
@@ -87,10 +87,11 @@ export async function registrarAuditoria(formData: FormData) {
     if (!tabelaAuditoriaValida(tabela)) {
       return { ok: false, erro: "Tipo de auditoria inválido." };
     }
-    const subcriterios: Record<string, string> = {};
-    for (const [k, v] of formData.entries()) {
-      if (k.startsWith("sub_")) subcriterios[k.slice(4)] = String(v);
+    if (!(pilar in PILARES)) {
+      return { ok: false, erro: "Selecione um dos 5 pilares do relatório." };
     }
+    const pontuacaoParse = parsePontuacaoManual(formData.get("pontuacao"));
+    if (!pontuacaoParse.ok) return { ok: false, erro: pontuacaoParse.erro };
     let observacoes = observacoesBase;
     const anexo = formData.get("anexo");
     if (anexo instanceof File && anexo.size > 0) {
@@ -128,8 +129,8 @@ export async function registrarAuditoria(formData: FormData) {
     const { error } = await sb.from(tabela).insert({
       correspondente_id,
       pilar,
-      pontuacao: pontuacaoPilar(subcriterios),
-      subcriterios,
+      pontuacao: pontuacaoParse.valor,
+      subcriterios: {},
       data_avaliacao,
       observacoes,
     });

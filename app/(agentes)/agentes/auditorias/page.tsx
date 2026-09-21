@@ -3,7 +3,7 @@ import { Tabela } from "@/components/ui";
 import { carregarAuditoriasAgente } from "@/lib/agentes/auditorias";
 import { contextoAgentes } from "@/lib/agentes/contexto";
 import { mascararCpf } from "@/lib/agentes/format";
-import { PILARES } from "@/lib/pilares";
+import { formatarPontuacao, PILARES } from "@/lib/pilares";
 
 export default async function AuditoriasAgentesPage({
   searchParams,
@@ -45,7 +45,7 @@ export default async function AuditoriasAgentesPage({
             Agente: r.nome_agente || mascararCpf(r.cpf_agente),
             Cpf: mascararCpf(r.cpf_agente),
             Pilar: PILARES[r.pilar] || r.pilar,
-            Pontuação: r.pontuacao ?? "—",
+            Pontuação: formatarPontuacao(r.pontuacao),
             Observações: r.observacoes || "—",
           }))}
         />

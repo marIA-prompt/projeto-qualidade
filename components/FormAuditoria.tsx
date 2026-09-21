@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarAuditoria } from "@/app/actions";
 import { pdfAuditoriaValido } from "@/lib/auditoriaAnexo";
-import { PILARES, ROTULOS_NOTA, SUBCRITERIOS, pontuacaoPilar } from "@/lib/pilares";
+import { PILARES } from "@/lib/pilares";
 
 export function FormAuditoria({
   correspondentes,
@@ -13,12 +13,9 @@ export function FormAuditoria({
 }) {
   const [tipo, setTipo] = useState<"externa" | "interna">("externa");
   const [pilar, setPilar] = useState("relacionamento_cliente");
-  const subs = SUBCRITERIOS[pilar];
-  const [notas, setNotas] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState<string | null>(null);
   const [arquivo, setArquivo] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const pontuacao = useMemo(() => pontuacaoPilar(notas), [notas]);
   const router = useRouter();
 
   return (
@@ -34,7 +31,6 @@ export function FormAuditoria({
         }
         fd.set("tipo", tipo);
         fd.set("pilar", pilar);
-        for (const [k, v] of Object.entries(notas)) fd.set(`sub_${k}`, v);
         const r = await registrarAuditoria(fd);
         setMsg(r.ok ? "Auditoria gravada." : r.erro);
         if (r.ok) {
@@ -46,8 +42,9 @@ export function FormAuditoria({
     >
       <h2 className="text-xl font-semibold">Registrar resultado de auditoria</h2>
       <p className="text-sm text-[var(--senff-navy-text)]">
-        Entrada manual por pilar (FR-3). A pontuação é a média dos subcritérios (ok=100, parcial=50,
-        não ok=0). Entra na pontuação qualitativa do monitoramento anual.
+        Fiel ao relatório oficial: os 5 pilares, as observações da EY e a pontuação
+        final digitada (ex.: 92%). Sem subcritérios e sem média automática. A nota
+        entra na pontuação qualitativa do monitoramento anual.
       </p>
       <label className="block text-sm">
         Tipo
@@ -79,10 +76,7 @@ export function FormAuditoria({
         <select
           className="mt-1 w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
           value={pilar}
-          onChange={(e) => {
-            setPilar(e.target.value);
-            setNotas({});
-          }}
+          onChange={(e) => setPilar(e.target.value)}
         >
           {Object.entries(PILARES).map(([k, v]) => (
             <option key={k} value={k}>
@@ -91,6 +85,9 @@ export function FormAuditoria({
           ))}
         </select>
       </label>
+      <p className="text-xs text-[var(--senff-navy-text)]">
+        Critério geral do relatório — somente os 5 pilares, sem detalhar subcritério.
+      </p>
       <label className="block text-sm">
         Data da avaliação
         <input
@@ -101,33 +98,32 @@ export function FormAuditoria({
           className="mt-1 rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
         />
       </label>
-      <div className="space-y-2">
-        <p className="font-medium">Subcritérios</p>
-        {Object.entries(subs).map(([k, rotulo]) => (
-          <label key={k} className="block text-sm">
-            {rotulo}
-            <select
-              className="mt-1 w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
-              value={notas[k] || "nao_avaliado"}
-              onChange={(e) => setNotas((prev) => ({ ...prev, [k]: e.target.value }))}
-            >
-              {Object.entries(ROTULOS_NOTA).map(([vk, vr]) => (
-                <option key={vk} value={vk}>
-                  {vr}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-      <p className="text-sm">
-        Pontuação do pilar: {pontuacao == null ? "nenhum subcritério avaliado" : pontuacao}
+      <label className="block text-sm">
+        Observações da EY — Auditoria
+        <textarea
+          name="observacoes"
+          rows={6}
+          placeholder="Cole aqui as informações e achados do relatório oficial"
+          className="mt-1 w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
+        />
+      </label>
+      <label className="block text-sm">
+        Pontuação da auditoria (%)
+        <input
+          type="number"
+          name="pontuacao"
+          min={0}
+          max={100}
+          step={0.01}
+          inputMode="decimal"
+          placeholder="Ex.: 92"
+          className="mt-1 w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
+        />
+      </label>
+      <p className="text-xs text-[var(--senff-navy-text)]">
+        Digite o percentual do relatório (pontuação final). Não calculamos a partir de
+        subcritérios.
       </p>
-      <textarea
-        name="observacoes"
-        placeholder="Observações (auditável)"
-        className="w-full rounded-[var(--radius-form)] border border-[var(--border)] px-3 py-2"
-      />
       <input
         ref={inputRef}
         type="file"
